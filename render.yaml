@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: easebrain-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r backend-ease-brain/requirements.txt && cd backend-ease-brain && flask db upgrade
+    startCommand: cd backend-ease-brain && gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.8
+      - key: FLASK_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: easebrain-db
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+
+databases:
+  - name: easebrain-db
+    databaseName: easebrain
+    user: easebrain_user
+    region: oregon
+    plan: free
