@@ -65,11 +65,16 @@ API: `http://localhost:5500`
 ## 📖 Documentation
 
 - **[Frontend README](./frontend-ease-brain/README.md)** - React app, pages, styling, deployment
-- **[Backend README](./backend-ease-brain/README.md)** - Flask API, database, danger detection
-- **[Admin Dashboard Phase 2](./frontend-ease-brain/ADMIN_DASHBOARD_PHASE2.md)** - Component library, hooks, API services (detailed guide)
+- **[Backend README](./backend-ease-brain/README.md)** - Flask API, security, performance, danger detection
+  - [Security & Authentication](./backend-ease-brain/README.md#-security--authentication)
+  - [Performance & Caching](./backend-ease-brain/README.md#-performance--caching-infrastructure)
+  - [Health Monitoring](./backend-ease-brain/README.md#health-check-endpoints)
+  - [API Docs](./backend-ease-brain/README.md#api-documentation)
+- **[Security Guide](./backend-ease-brain/SECURITY.md)** - Detailed security implementation and compliance
+- **[Admin Dashboard Phase 2](./frontend-ease-brain/ADMIN_DASHBOARD_PHASE2.md)** - Component library, hooks, API services
 - **[Danger Detector Summary](./DANGER_DETECTOR_SUMMARY.md)** - Detection system overview
 - **[Danger Detector Phase B](./DANGER_DETECTOR_PHASE_B.md)** - LLM enhancement details
-- **[Security Guide](./backend-ease-brain/SECURITY.md)** - Secrets, API keys, compliance
+- **[API Documentation](http://localhost:5500/api/docs)** - Interactive Swagger UI and error codes
 - **[Caregiver Dashboard Analysis](./CAREGIVER_DASHBOARD_ANALYSIS.md)** - Dashboard architecture
 - **[Phase 1 Complete](./CAREGIVER_DASHBOARD_PHASE1_COMPLETE.md)** - Recent optimizations
 
@@ -120,6 +125,23 @@ API: `http://localhost:5500`
 - Safety planning
 - Health metric recording
 - Appointment management
+
+### Security Infrastructure (Days 3-5)
+
+- **JWT Authentication**: Hardened secret management with environment enforcement
+- **Rate Limiting**: Per-endpoint rules (5/min login, 3/min signup, 200/day default)
+- **CSRF Protection**: Session-based token generation with secure cookies
+- **Audit Logging**: Comprehensive event tracking with IP addresses and timestamps
+- **Structured Error Responses**: Consistent JSON format prevents information leakage
+- **Session Security**: Secure, HttpOnly, SameSite=Strict cookies
+
+### Performance Infrastructure (Days 4-5)
+
+- **Intelligent Caching**: TTL-based response caching (10min stats, 5min user data, 15min community)
+- **Database Optimization**: 18 strategic indexes for O(1) lookups on foreign keys
+- **Health Monitoring**: `/api/health` endpoint for system status and dependency checks
+- **API Documentation**: Interactive Swagger UI and OpenAPI 3.0 specification
+- **Error Handling**: Structured error framework with 7 error types and HTTP handlers
 
 ## 📊 Test Coverage
 
