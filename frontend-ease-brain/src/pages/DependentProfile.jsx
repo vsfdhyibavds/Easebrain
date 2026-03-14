@@ -191,7 +191,8 @@ function DependentProfile() {
     const fetchDependentData = async () => {
       try {
         // Try to fetch from backend API
-        const response = await fetch(`http://127.0.0.1:5000/api/users/${id}`);
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://www.easebrain.live/api';
+        const response = await fetch(`${apiBase}/users/${id}`);
 
         if (response.ok) {
           const apiData = await response.json();

@@ -33,7 +33,7 @@ def get_openapi_spec():
             },
             "servers": [
                 {
-                    "url": "http://localhost:5500/api",
+                    "url": "http://www.easebrain.live/api",
                     "description": "Development Server",
                 },
                 {

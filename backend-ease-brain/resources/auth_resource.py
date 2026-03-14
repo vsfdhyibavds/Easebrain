@@ -52,7 +52,7 @@ class PasswordResetResource(Resource):
         db.session.commit()
 
         # Construct reset URL with both token and email
-        frontend_url = current_app.config.get("FRONTEND_URL", "http://localhost:5173")
+        frontend_url = current_app.config.get("FRONTEND_URL", "http://www.easebrain.live")
         reset_url = f"{frontend_url}/reset-password?token={verification.token}&email={user.email}"
 
         # Send password reset email

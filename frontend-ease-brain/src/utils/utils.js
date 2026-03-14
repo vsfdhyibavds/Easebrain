@@ -6,7 +6,7 @@
 // - Otherwise, in development use a relative base ("") so the Vite dev server
 //   proxy rules can forward requests to the backend (recommended for local dev).
 // - In production, fall back to the hosted backend URL.
-const PROD_FALLBACK = "https://easebrain-backend.onrender.com/api";
+const PROD_FALLBACK = "http://www.easebrain.live/api";
 
 const VITE_BASE = import.meta.env.VITE_BASE_URL;
 
