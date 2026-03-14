@@ -239,7 +239,7 @@ nslookup www.easebrain.live
 
 ### CORS Errors
 - **Error**: `Access to XMLHttpRequest blocked by CORS policy`
-- **Solution**: 
+- **Solution**:
   1. Check `backend-ease-brain/app.py` CORS configuration
   2. Ensure frontend URL is in `cors_origins` list
   3. Restart backend service

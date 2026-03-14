@@ -196,7 +196,7 @@ curl -X POST http://www.easebrain.live/api/auth/login \
 
 ## 📞 Need Help?
 
-1. **Check logs**: 
+1. **Check logs**:
    - Render: Dashboard → Logs
    - Vercel: Deployments → Build Logs
 
