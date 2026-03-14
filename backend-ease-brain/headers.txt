@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Server: Werkzeug/3.0.6 Python/3.8.18
+Date: Tue, 04 Nov 2025 19:19:13 GMT
+Content-Type: application/json
+Content-Length: 733
+Access-Control-Allow-Origin: http://127.0.0.1:3000
+Access-Control-Allow-Credentials: true
+Vary: Origin
+Connection: close
+

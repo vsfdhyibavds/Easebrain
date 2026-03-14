@@ -1,0 +1,26 @@
+HTTP/1.1 200 OK
+Server: Werkzeug/3.0.6 Python/3.8.18
+Date: Tue, 04 Nov 2025 19:19:13 GMT
+Content-Type: application/json
+Content-Length: 733
+Access-Control-Allow-Origin: http://127.0.0.1:3000
+Access-Control-Allow-Credentials: true
+Vary: Origin
+Connection: close
+
+{
+    "message": "Login successful",
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc2MjI4Mzk1MywianRpIjoiZDY3NTExNmItMTcyOS00YWJlLWFiODAtYzRiNWVkNDBlMzY3IiwidHlwZSI6ImFjY2VzcyIsInN1YiI6MTAsIm5iZiI6MTc2MjI4Mzk1MywiY3NyZiI6IjU4Mjg2ZGZhLWQ1NWUtNDU2MC1iMzJhLTQ5ODc3ZjcwNjNkMSIsImV4cCI6MTc2MjM3MDM1M30.98LFWLtZYC7oIDme0juwPCQtf-U6zjn2zRhMsvGLjXo",
+    "user": {
+        "id": 10,
+        "username": "Frank",
+        "email": "eugenewekesa748@gmail.com",
+        "first_name": "Eugene",
+        "last_name": "Wekesa",
+        "phone_number": "+254787943878",
+        "location": "Nairobi",
+        "date_of_birth": "2002-07-24",
+        "is_active": true,
+        "organization_id": null
+    }
+}

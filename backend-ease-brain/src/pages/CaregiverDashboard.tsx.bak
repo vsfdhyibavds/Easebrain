@@ -1,0 +1,2032 @@
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import toast from 'react-hot-toast';
+// import { useAuth } from "@/features/auth/AuthContext";
+import {
+  FaUserFriends,
+  FaClipboardList,
+  FaExclamationTriangle,
+  FaSmileBeam,
+  FaPlus,
+  FaBell,
+  FaChartLine,
+  FaArrowUp,
+  FaClock,
+  FaCalendarAlt,
+  FaHeartbeat,
+  FaMedkit,
+  FaNotesMedical,
+  FaSearch,
+  FaEllipsisH,
+  FaChevronRight,
+  FaStar,
+  FaCheckCircle,
+  FaEye,
+  FaDownload,
+  FaComments,
+  FaCalendarCheck,
+} from "react-icons/fa";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BASE_URL } from "@/utils/utils";
+import {
+  AddDependentModal,
+  CreateTaskModal,
+  SendAlertModal,
+  ScheduleAppointmentModal
+} from "../components/CaregiverModals";
+import CaregiverChatModal from "../components/CaregiverChatModal";
+
+function CaregiverDashboard() {
+  // const { user } = useAuth();
+  // TEMP: Mock user for development/testing without auth
+  const user = {
+    accessToken: 'mock-token',
+    first_name: 'John',
+    username: 'caregiver',
+  };
+  const navigate = useNavigate();
+
+  // Modal state
+  const [modals, setModals] = useState({
+    addDependent: false,
+    createTask: false,
+    sendAlert: false,
+    scheduleAppointment: false,
+    chat: false,
+    viewReports: false,
+    viewActivities: false,
+    viewAllDependents: false,
+    viewAllNotifications: false
+  });
+
+  const [selectedDependentForChat, setSelectedDependentForChat] = useState(null);
+
+  const openModal = (modalName) => {
+    setModals(prev => ({ ...prev, [modalName]: true }));
+  };
+
+  const closeModal = (modalName) => {
+    setModals(prev => ({ ...prev, [modalName]: false }));
+    if (modalName === 'chat') {
+      setSelectedDependentForChat(null);
+    }
+  };
+
+  const openChatModal = (dependent) => {
+    setSelectedDependentForChat(dependent);
+    setModals(prev => ({ ...prev, chat: true }));
+  };
+
+  // Search and filter state
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [filterType, _setFilterType] = useState('all');
+  const searchTimeoutRef = useRef(null);
+
+  // Pagination state
+  const [currentDependentPage, setCurrentDependentPage] = useState(1);
+  const [currentActivityPage, setCurrentActivityPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
+  const [stats, setStats] = useState([
+    {
+      title: "Dependents",
+      value: 0,
+      icon: FaUserFriends,
+      trend: "+2 this week",
+      change: "+15%",
+      trendUp: true,
+      color: "bg-gradient-to-br from-teal-500 to-cyan-500",
+      iconBg: "bg-teal-100",
+      textColor: "text-teal-700"
+    },
+    {
+      title: "Pending Tasks",
+      value: 0,
+      icon: FaClipboardList,
+      trend: "3 overdue",
+      change: "-5%",
+      trendUp: false,
+      color: "bg-gradient-to-br from-amber-500 to-orange-500",
+      iconBg: "bg-amber-100",
+      textColor: "text-amber-700"
+    },
+    {
+      title: "Urgent Alerts",
+      value: 0,
+      icon: FaExclamationTriangle,
+      trend: "1 needs review",
+      change: "+8%",
+      trendUp: false,
+      color: "bg-gradient-to-br from-red-500 to-orange-500",
+      iconBg: "bg-red-100",
+      textColor: "text-red-700"
+    },
+    {
+      title: "Mood Checks",
+      value: 0,
+      icon: FaSmileBeam,
+      trend: "All checked in",
+      change: "+22%",
+      trendUp: true,
+      color: "bg-gradient-to-br from-emerald-500 to-teal-500",
+      iconBg: "bg-emerald-100",
+      textColor: "text-emerald-700"
+    },
+  ]);
+
+  const [recentActivity, setRecentActivity] = useState([]);
+
+  const [moodData, setMoodData] = useState([]);
+
+  const [medicationData, setMedicationData] = useState([]);
+
+  const [dependents, setDependents] = useState([]);
+
+  const [performanceData, setPerformanceData] = useState({
+    overallScore: 0,
+    rating: "",
+    taskCompletion: 0,
+    medicationAdherence: 0,
+    moodPositivity: 0,
+    responseTime: 0
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showNotificationsPanel, setShowNotificationsPanel] = useState(false);
+
+  // Teal-aligned color system
+  const moodColors = {
+    positive: "#059669",  // emerald-600
+    neutral: "#0d9488",   // teal-600
+    negative: "#0f766e"   // teal-800
+  };
+
+  const priorityColors = {
+    high: "#dc2626",      // red-600
+    medium: "#f59e0b",    // amber-500
+    normal: "#0d9488"     // teal-600
+  };
+
+  // CONSOLIDATED: Fetch all dashboard data in single API call
+  useEffect(() => {
+    async function loadAllDashboardData() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch consolidated dashboard data from backend
+        const response = await fetch(`${BASE_URL}/caregiver/dashboard`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to load dashboard: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Update stats
+        setStats([
+          {
+            title: "Dependents",
+            value: data.stats?.dependents_count || 0,
+            icon: FaUserFriends,
+            trend: "+2 this week",
+            change: "+15%",
+            trendUp: true,
+            color: "bg-gradient-to-br from-teal-500 to-cyan-500",
+            iconBg: "bg-teal-100",
+            textColor: "text-teal-700"
+          },
+          {
+            title: "Pending Tasks",
+            value: data.stats?.active_tasks || 0,
+            icon: FaClipboardList,
+            trend: "3 overdue",
+            change: "-5%",
+            trendUp: false,
+            color: "bg-gradient-to-br from-amber-500 to-orange-500",
+            iconBg: "bg-amber-100",
+            textColor: "text-amber-700"
+          },
+          {
+            title: "Urgent Alerts",
+            value: data.stats?.safety_concerns || 0,
+            icon: FaExclamationTriangle,
+            trend: "1 needs review",
+            change: "+8%",
+            trendUp: false,
+            color: "bg-gradient-to-br from-red-500 to-orange-500",
+            iconBg: "bg-red-100",
+            textColor: "text-red-700"
+          },
+          {
+            title: "Mood Checks",
+            value: data.stats?.completion_rate || 0,
+            icon: FaSmileBeam,
+            trend: "All checked in",
+            change: "+22%",
+            trendUp: true,
+            color: "bg-gradient-to-br from-emerald-500 to-teal-500",
+            iconBg: "bg-emerald-100",
+            textColor: "text-emerald-700"
+          },
+        ]);
+
+        // Update all data at once
+        setRecentActivity(data.recent_activities || []);
+        setMoodData(data.mood_data || []);
+        setMedicationData(data.medication_data || []);
+        setDependents(data.dependents || []);
+        setPerformanceData({
+          overallScore: data.performance?.overall_score || 0,
+          rating: data.performance?.rating || "",
+          taskCompletion: data.performance?.task_completion || 0,
+          medicationAdherence: data.performance?.medication_adherence || 0,
+          moodPositivity: data.performance?.mood_positivity || 0,
+          responseTime: data.performance?.response_time || 0
+        });
+
+      } catch (err) {
+        setError(err.message || 'Failed to load dashboard data');
+        toast.error(err.message || 'Failed to load dashboard. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAllDashboardData();
+  }, []);
+
+  // Custom tooltip for charts (plain JS version)
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-4 rounded-lg shadow-lg border border-teal-100">
+          <p className="font-semibold text-teal-900 mb-2">{label}</p>
+          {payload.map((entry, index) => (
+            <p key={index} className="text-sm text-teal-700" style={{ color: entry.color }}>
+              {entry.name}: {entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Filter functions for search - MEMOIZED to prevent recalculation
+  const filteredDependents = useMemo(() =>
+    dependents.filter(dependent =>
+      dependent.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      dependent.status.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      dependent.mood.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+    ),
+    [dependents, debouncedSearchQuery]
+  );
+
+  const filteredActivities = useMemo(() =>
+    recentActivity.filter(activity =>
+      activity.dependent.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      activity.activity.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      activity.status.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+    ),
+    [recentActivity, debouncedSearchQuery]
+  );
+
+  const displayDependents = useMemo(() => (filterType === 'all' || filterType === 'dependents' ? filteredDependents : []), [filterType, filteredDependents]);
+  const displayActivities = useMemo(() => (filterType === 'all' || filterType === 'activities' ? filteredActivities : []), [filterType, filteredActivities]);
+
+  // Pagination logic
+  const totalDependentPages = Math.ceil(displayDependents.length / ITEMS_PER_PAGE);
+  const totalActivityPages = Math.ceil(displayActivities.length / ITEMS_PER_PAGE);
+
+  const paginatedDependents = useMemo(() => {
+    const startIdx = (currentDependentPage - 1) * ITEMS_PER_PAGE;
+    return displayDependents.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  }, [displayDependents, currentDependentPage]);
+
+  const paginatedActivities = useMemo(() => {
+    const startIdx = (currentActivityPage - 1) * ITEMS_PER_PAGE;
+    return displayActivities.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  }, [displayActivities, currentActivityPage]);
+
+  // Reset pagination when search/filter changes
+  useEffect(() => {
+    setCurrentDependentPage(1);
+    setCurrentActivityPage(1);
+  }, [debouncedSearchQuery, filterType]);
+
+  // Cleanup debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Button click handlers with API integration
+  const handleQuickAction = async (actionLabel) => {
+    const token = user?.accessToken;
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    try {
+      switch (actionLabel) {
+        case "Add New Dependent":
+          openModal('addDependent');
+          break;
+        case "Create Task List":
+          openModal('createTask');
+          break;
+        case "Send Health Alert":
+          openModal('sendAlert');
+          break;
+        case "Generate Report": {
+          toast.loading("Generating report...");
+          // Call report generation endpoint
+          const reportRes = await fetch(`${BASE_URL}/caregiver/reports/generate`, {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (reportRes.ok) {
+            toast.success("Report generated successfully!");
+          } else {
+            toast.error("Failed to generate report");
+          }
+          break;
+        }
+        case "Schedule Appointment":
+          openModal('scheduleAppointment');
+          break;
+        case "Export Health Data": {
+          toast.success("Exporting health data...");
+          // Call export endpoint
+          const exportRes = await fetch(`${BASE_URL}/caregiver/health-data/export`, {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (exportRes.ok) {
+            const blob = await exportRes.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `health-data-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            toast.success("Health data exported!");
+          } else {
+            toast.error("Failed to export data");
+          }
+          break;
+        }
+        default:
+          toast.success(`${actionLabel} feature coming soon!`);
+      }
+    } catch (error) {
+      toast.error(error?.message || `Failed to process: ${actionLabel}`);
+    }
+  };
+
+  const handleActivityAction = async (activityId, action) => {
+    const token = user?.accessToken;
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    try {
+      switch (action) {
+        case "view": {
+          // Show activity details in a toast for now
+          const activity = recentActivity.find(a => a.id === activityId);
+          if (activity) {
+            toast.success(`Activity: ${activity.activity}\nDependent: ${activity.dependent}\nStatus: ${activity.status}`);
+          }
+          break;
+        }
+        case "approve":
+          // Find and update the activity status locally
+          setRecentActivity(prev =>
+            prev.map(a => a.id === activityId ? { ...a, status: "completed" } : a)
+          );
+          toast.success("Activity approved! ✅");
+          break;
+        case "alert":
+          // Create alert notification
+          toast.success("Alert created and sent to caregivers! 🔔");
+          break;
+        default:
+          toast.success(`${action} action on activity ${activityId}`);
+      }
+    } catch (error) {
+      toast.error(error?.message || `Failed to ${action} activity`);
+    }
+  };
+
+  const handleDependentView = (dependentId) => {
+    navigate(`/caregiver/dependents/${dependentId}`);
+  };
+
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    // update debounced query only; search input doesn't need local state
+
+    // Debounce the search query (300ms delay)
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(query);
+    }, 300);
+  };
+
+  const handleNotificationClick = () => {
+    setShowNotificationsPanel(prev => !prev);
+  };
+
+  const _handleExport = async () => {
+    const token = user?.accessToken;
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    try {
+      toast.loading("Exporting health data...");
+      const res = await fetch(`${BASE_URL}/caregiver/health-data/export`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `health-data-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success("Health data exported successfully!");
+      } else {
+        toast.error("Failed to export health data");
+      }
+    } catch (error) {
+      toast.error(error?.message || "Failed to export health data");
+    }
+  };
+
+  const _handleGenerateReport = async () => {
+    const token = user?.accessToken;
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    try {
+      toast.loading("Generating report...");
+      const res = await fetch(`${BASE_URL}/caregiver/reports/generate`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `caregiver-report-${new Date().toISOString().split('T')[0]}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success("Report generated and downloaded!");
+      } else {
+        toast.error("Failed to generate report");
+      }
+    } catch (error) {
+      toast.error(error?.message || "Failed to generate report");
+    }
+  };
+
+  // Skeleton Loader Component
+  const StatCardSkeleton = () => (
+    <div className="bg-white rounded-lg p-6 shadow-md border border-teal-100 animate-pulse">
+      <div className="h-12 bg-gray-200 rounded w-12 mb-4"></div>
+      <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+      <div className="h-8 bg-gray-200 rounded w-16"></div>
+    </div>
+  );
+
+  const DependentCardSkeleton = () => (
+    <div className="border-2 border-gray-200 rounded-lg p-6 animate-pulse">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
+          <div className="h-3 bg-gray-200 rounded w-24"></div>
+        </div>
+        <div className="h-6 bg-gray-200 rounded w-16"></div>
+      </div>
+      <div className="space-y-2">
+        <div className="h-3 bg-gray-200 rounded w-full"></div>
+        <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-14 w-14 border-4 border-teal-200 border-t-teal-600 mx-auto mb-4"></div>
+          <p className="text-teal-700 font-medium">Loading your caregiving dashboard...</p>
+          <p className="text-sm text-teal-600 mt-2">Preparing insights and analytics</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-white p-6">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border-2 border-red-200">
+          <div className="flex justify-center mb-4">
+            <div className="bg-red-100 rounded-full p-4">
+              <FaExclamationTriangle className="text-red-600 text-3xl" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 text-center mb-2">
+            Failed to Load Dashboard
+          </h2>
+          <p className="text-gray-600 text-center mb-6">
+            {error}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-gradient-to-r from-teal-500 to-cyan-500 hover:shadow-lg text-white font-semibold py-3 rounded-lg transition-all duration-200"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full mt-3 border-2 border-teal-500 text-teal-600 hover:bg-teal-50 font-semibold py-3 rounded-lg transition-all duration-200"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 bg-gradient-to-b from-white to-teal-50 min-h-screen p-6">
+      {/* Header with Search and Notifications */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-4">
+          <div>
+            <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent mb-2">
+              Welcome, {user?.first_name || user?.username || "Caregiver"}! 👋
+            </h1>
+            <p className="text-teal-700">
+              Manage your dependents and track their wellness in real-time
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <FaSearch className="absolute left-4 top-3.5 text-teal-400 text-lg" />
+              <input
+                type="text"
+                placeholder="Search dependents, tasks..."
+                onChange={handleSearchChange}
+                className="w-full pl-12 pr-4 py-3 bg-white border border-teal-200 rounded-xl text-teal-900 placeholder-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all shadow-sm"
+              />
+            </div>
+
+            <button type="button" onClick={handleNotificationClick} className="relative p-3 rounded-xl border border-teal-200 hover:border-teal-300 hover:bg-teal-50 transition-colors cursor-pointer">
+              <FaBell className="text-teal-600 text-xl" />
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-teal-500 text-white text-xs rounded-full flex items-center justify-center">
+                3
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dashboard Tabs */}
+        <nav
+          className="flex gap-4 border-b border-teal-200"
+          role="tablist"
+          aria-label="Dashboard navigation tabs"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab("overview")}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setActiveTab('dependents');
+              }
+            }}
+            className={`pb-4 px-4 font-semibold transition-colors flex items-center gap-2 border-b-2 cursor-pointer ${activeTab === "overview" ? "text-teal-600 border-teal-600" : "text-teal-700 border-transparent hover:text-teal-600"}`}
+            role="tab"
+            aria-selected={activeTab === "overview"}
+            aria-controls="overview-panel"
+            tabIndex={activeTab === "overview" ? 0 : -1}
+          >
+            <FaChartLine aria-hidden="true" /> Overview
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("dependents")}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setActiveTab('health');
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setActiveTab('overview');
+              }
+            }}
+            className={`pb-4 px-4 font-semibold transition-colors flex items-center gap-2 border-b-2 cursor-pointer ${activeTab === "dependents" ? "text-teal-600 border-teal-600" : "text-teal-700 border-transparent hover:text-teal-600"}`}
+            role="tab"
+            aria-selected={activeTab === "dependents"}
+            aria-controls="dependents-panel"
+            tabIndex={activeTab === "dependents" ? 0 : -1}
+          >
+            <FaUserFriends aria-hidden="true" /> Dependents
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("health")}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                setActiveTab('reports');
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setActiveTab('dependents');
+              }
+            }}
+            className={`pb-4 px-4 font-semibold transition-colors flex items-center gap-2 border-b-2 cursor-pointer ${activeTab === "health" ? "text-teal-600 border-teal-600" : "text-teal-700 border-transparent hover:text-teal-600"}`}
+            role="tab"
+            aria-selected={activeTab === "health"}
+            aria-controls="health-panel"
+            tabIndex={activeTab === "health" ? 0 : -1}
+          >
+            <FaHeartbeat aria-hidden="true" /> Health Metrics
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("reports")}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                setActiveTab('health');
+              }
+            }}
+            className={`pb-4 px-4 font-semibold transition-colors flex items-center gap-2 border-b-2 cursor-pointer ${activeTab === "reports" ? "text-teal-600 border-teal-600" : "text-teal-700 border-transparent hover:text-teal-600"}`}
+            role="tab"
+            aria-selected={activeTab === "reports"}
+            aria-controls="reports-panel"
+            tabIndex={activeTab === "reports" ? 0 : -1}
+          >
+            <FaNotesMedical aria-hidden="true" /> Reports
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+
+      {/* OVERVIEW TAB */}
+      <section id="overview-panel" role="tabpanel" aria-labelledby="overview-tab" hidden={activeTab !== "overview"}>
+      {activeTab === "overview" && (
+        <>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((s, idx) => {
+          const IconComponent = s.icon;
+          return (
+            <div
+              key={idx}
+              className="group relative bg-white shadow-lg hover:shadow-xl rounded-2xl p-6 border border-teal-100 hover:border-teal-300 transition-all duration-300 hover:-translate-y-2 cursor-pointer overflow-hidden"
+            >
+              {/* Teal gradient overlay on hover */}
+              <div className={`absolute inset-0 ${s.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-2xl`}></div>
+
+              {/* Icon Badge */}
+              <div className={`${s.iconBg} w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 border border-teal-100`}>
+                <IconComponent className={`text-2xl ${s.textColor}`} />
+              </div>
+
+              {/* Content */}
+              <div className="relative z-10">
+                <p className="text-teal-600 text-sm font-medium uppercase tracking-wider mb-1">{s.title}</p>
+                <div className="flex items-end justify-between mb-2">
+                  <p className="text-4xl font-black text-teal-900">{s.value}</p>
+                  <span className={`text-sm font-bold ${s.trendUp ? 'text-teal-600' : 'text-red-500'}`}>
+                    {s.change}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {s.trendUp ? (
+                    <FaArrowUp className="text-teal-500 text-xs" />
+                  ) : (
+                    <FaExclamationTriangle className="text-red-500 text-xs" />
+                  )}
+                  <span className={`text-sm font-medium ${s.trendUp ? "text-teal-600" : "text-red-600"}`}>
+                    {s.trend}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Dependents Summary - Quick Overview */}
+      <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100 mt-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-teal-500 to-cyan-500 p-3 rounded-xl shadow-md">
+              <FaUserFriends className="text-white text-lg" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-teal-900">Your Dependents</h3>
+              <p className="text-teal-600 text-sm">Quick status overview</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setActiveTab('dependents')} className="flex items-center gap-2 text-teal-600 hover:text-teal-700 font-semibold hover:bg-teal-50 px-3 py-2 rounded-lg transition-colors cursor-pointer">
+            View All <FaChevronRight />
+          </button>
+        </div>
+
+        {dependents.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {dependents.slice(0, 6).map((dependent) => (
+              <div
+                key={dependent.id}
+                className="group p-4 bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl border border-teal-100 hover:border-teal-300 hover:shadow-md transition-all duration-300 cursor-pointer"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-xl flex items-center justify-center border border-teal-200">
+                      <FaUserFriends className="text-teal-600 text-lg" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-teal-900 text-sm group-hover:text-teal-700">{dependent.name}</h4>
+                      <p className="text-teal-500 text-xs">{dependent.age ? `Age ${dependent.age}` : 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div className={`w-3 h-3 rounded-full ${
+                    dependent.status === 'stable' ? 'bg-teal-600' :
+                    dependent.status === 'needs_attention' ? 'bg-amber-500' : 'bg-gray-400'
+                  }`}></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-teal-600">Mood:</span>
+                    <span className="font-semibold text-teal-900 capitalize">{dependent.mood || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-teal-600">Status:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      dependent.status === 'stable' ? 'bg-teal-100 text-teal-700' :
+                      dependent.status === 'needs_attention' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {dependent.status === 'stable' ? 'Stable' : dependent.status === 'needs_attention' ? 'Needs Attention' : 'Unknown'}
+                    </span>
+                  </div>
+                  {dependent.medication_adherence && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-teal-600">Medication:</span>
+                      <span className="font-semibold text-teal-900">{dependent.medication_adherence}%</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-teal-600">
+            <p className="text-sm">No dependents added yet</p>
+          </div>
+        )}
+      </div>
+
+      {/* Health Metrics Summary */}
+      {performanceData.overallScore > 0 && (
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100 mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-emerald-500 to-teal-500 p-3 rounded-xl shadow-md">
+                <FaHeartbeat className="text-white text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-teal-900">Health Metrics</h3>
+                <p className="text-teal-600 text-sm">Overall care performance</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => setActiveTab('reports')} className="flex items-center gap-2 text-teal-600 hover:text-teal-700 font-semibold hover:bg-teal-50 px-3 py-2 rounded-lg transition-colors cursor-pointer">
+              View Reports <FaChevronRight />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Overall Score */}
+            <div className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-xl p-4 border border-teal-100">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-teal-600 font-medium text-sm">Overall Score</span>
+                <FaChartLine className="text-teal-500" />
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-teal-900">{performanceData.overallScore}</span>
+                <span className="text-teal-600 text-sm">/ 100</span>
+              </div>
+              <div className="mt-3 w-full bg-teal-100 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-teal-600 to-emerald-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${performanceData.overallScore}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Task Completion */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-100">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-amber-600 font-medium text-sm">Task Completion</span>
+                <FaClipboardList className="text-amber-500" />
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-amber-900">{performanceData.taskCompletion}</span>
+                <span className="text-amber-600 text-sm">%</span>
+              </div>
+              <div className="mt-3 w-full bg-amber-100 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${performanceData.taskCompletion}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Medication Adherence */}
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-100">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-emerald-600 font-medium text-sm">Medication Adherence</span>
+                <FaMedkit className="text-emerald-500" />
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-3xl font-black text-emerald-900">{performanceData.medicationAdherence}</span>
+                <span className="text-emerald-600 text-sm">%</span>
+              </div>
+              <div className="mt-3 w-full bg-emerald-100 rounded-full h-2">
+                <div
+                  className="bg-gradient-to-r from-emerald-600 to-teal-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${performanceData.medicationAdherence}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          {performanceData.rating && (
+            <div className="mt-4 p-4 bg-teal-50 rounded-xl border border-teal-100 flex items-center justify-between">
+              <span className="text-teal-700 font-medium">Overall Rating</span>
+              <div className="flex items-center gap-2">
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <FaStar
+                      key={i}
+                      className={`text-sm ${i < Math.floor(parseFloat(performanceData.rating)) ? 'text-amber-500' : 'text-gray-300'}`}
+                    />
+                  ))}
+                </div>
+                <span className="text-teal-900 font-bold">{performanceData.rating} / 5.0</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recent Activities Summary */}
+      {recentActivity.length > 0 && (
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100 mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-teal-500 to-cyan-500 p-3 rounded-xl shadow-md">
+                <FaClock className="text-white text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-teal-900">Recent Activities</h3>
+                <p className="text-teal-600 text-sm">Latest updates from your dependents</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => setActiveTab('dependents')} className="flex items-center gap-2 text-teal-600 hover:text-teal-700 font-semibold hover:bg-teal-50 px-3 py-2 rounded-lg transition-colors cursor-pointer">
+              View All <FaChevronRight />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {recentActivity.slice(0, 5).map((activity) => (
+              <div
+                key={activity.id}
+                className="group flex items-center justify-between p-4 bg-teal-50 hover:bg-teal-100 rounded-xl border border-teal-100 hover:border-teal-300 transition-all duration-300"
+              >
+                <div className="flex items-center gap-4 flex-1">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border-2 ${
+                    activity.priority === 'high' ? 'bg-red-100 border-red-200' :
+                    activity.priority === 'medium' ? 'bg-amber-100 border-amber-200' : 'bg-teal-100 border-teal-200'
+                  }`}>
+                    <FaClipboardList className={`${
+                      activity.priority === 'high' ? 'text-red-600' :
+                      activity.priority === 'medium' ? 'text-amber-600' : 'text-teal-600'
+                    }`} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-teal-900">{activity.activity}</h4>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-sm text-teal-600">{activity.dependent}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                        activity.priority === 'high' ? 'bg-red-100 text-red-700' :
+                        activity.priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700'
+                      }`}>
+                        {activity.priority.charAt(0).toUpperCase() + activity.priority.slice(1)} Priority
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                        activity.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs text-teal-500">
+                  {activity.timestamp ? new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Charts Section - Mood Trends and Medication Adherence */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+        {/* Mood Trends Chart */}
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-teal-900">Mood Trends</h3>
+              <p className="text-teal-600 text-sm">Weekly emotional patterns</p>
+            </div>
+            <FaSmileBeam className="text-teal-500 text-2xl" />
+          </div>
+
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={moodData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="day" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="positive"
+                  name="Positive"
+                  stroke={moodColors.positive}
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="neutral"
+                  name="Neutral"
+                  stroke={moodColors.neutral}
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="negative"
+                  name="Negative"
+                  stroke={moodColors.negative}
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-teal-600"></div>
+                <span className="text-teal-600">Positive</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-teal-500"></div>
+                <span className="text-teal-600">Neutral</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-teal-700"></div>
+                <span className="text-teal-600">Negative</span>
+              </div>
+            </div>
+            <button type="button" onClick={() => openModal('viewReports')} className="text-teal-600 hover:text-teal-700 font-medium hover:bg-teal-50 px-3 py-1 rounded-lg transition-colors cursor-pointer">
+              View Details →
+            </button>
+          </div>
+        </div>
+
+        {/* Medication Adherence Chart */}
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-teal-900">Medication Adherence</h3>
+              <p className="text-teal-600 text-sm">Daily completion rates</p>
+            </div>
+            <FaMedkit className="text-teal-500 text-2xl" />
+          </div>
+
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={medicationData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="time" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar
+                  dataKey="completed"
+                  name="Completed"
+                  fill="#0d9488"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="missed"
+                  name="Missed"
+                  fill="#ef4444"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <div className="text-teal-600">
+              Overall adherence rate: <span className="font-bold text-teal-700">92%</span>
+            </div>
+            <button type="button" onClick={() => openModal('scheduleAppointment')} className="text-teal-600 hover:text-teal-700 font-medium hover:bg-teal-50 px-3 py-1 rounded-lg transition-colors cursor-pointer">
+              Schedule Review →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Performance Metrics - Always Show */}
+      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 rounded-2xl p-8 text-white shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h3 className="text-2xl font-bold mb-2">Your Performance Score</h3>
+            <p className="opacity-90">Based on completion rates and dependent satisfaction</p>
+          </div>
+          <div className="text-center">
+            <div className="text-6xl font-black">{performanceData.overallScore || 0}</div>
+            <div className="flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <FaStar key={i} className="text-yellow-300" />
+              ))}
+              <span className="ml-2 font-semibold">{performanceData.rating || "N/A"}</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+            <div className="text-2xl font-bold">{performanceData.taskCompletion || 0}%</div>
+            <div className="text-sm opacity-90">Task Completion</div>
+          </div>
+          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+            <div className="text-2xl font-bold">{performanceData.medicationAdherence || 0}%</div>
+            <div className="text-sm opacity-90">Medication Adherence</div>
+          </div>
+          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+            <div className="text-2xl font-bold">{performanceData.moodPositivity || 0}%</div>
+            <div className="text-sm opacity-90">Mood Positivity</div>
+          </div>
+          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+            <div className="text-2xl font-bold">{performanceData.responseTime || 0}%</div>
+            <div className="text-sm opacity-90">Response Time</div>
+          </div>
+        </div>
+      </div>
+
+        </>
+      )}
+      </section>
+
+      {/* DEPENDENTS TAB */}
+      <section id="dependents-panel" role="tabpanel" aria-labelledby="dependents-tab" hidden={activeTab !== "dependents"}>
+      {activeTab === "dependents" && (
+        <>
+      {/* Dependents List & Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Dependents List */}
+        <div className="lg:col-span-2 bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-teal-500 to-cyan-500 p-3 rounded-xl shadow-md">
+                <FaUserFriends className="text-white text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-teal-900">Your Dependents</h3>
+                <p className="text-teal-600 text-sm">All active dependents under your care</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => openModal('viewAllDependents')} className="flex items-center gap-2 text-teal-600 hover:text-teal-700 font-semibold hover:bg-teal-50 px-3 py-2 rounded-lg transition-colors cursor-pointer">
+              View All <FaChevronRight />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {paginatedDependents.length > 0 ? (
+              paginatedDependents.map((dependent) => (
+                <div
+                  key={dependent.id}
+                  className="group flex items-center justify-between p-4 bg-teal-50 hover:bg-teal-100 rounded-xl border border-teal-100 hover:border-teal-300 transition-all duration-300 cursor-pointer"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <div className="w-12 h-12 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-xl flex items-center justify-center border border-teal-200">
+                        <FaUserFriends className="text-teal-600 text-xl" />
+                      </div>
+                      <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white ${
+                        dependent.status === "Excellent" ? "bg-teal-600" :
+                        dependent.status === "Stable" ? "bg-teal-500" : "bg-amber-500"
+                      }`}></div>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-teal-900 group-hover:text-teal-700 flex items-center gap-2">
+                        {dependent.name}
+                        {dependent.is_verified && (
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-semibold border border-green-200">
+                            <FaCheckCircle className="text-xs" /> Verified
+                          </span>
+                        )}
+                      </h4>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className={`px-2 py-1 text-xs rounded-full border ${
+                          dependent.status === "Excellent" ? "bg-teal-100 text-teal-700 border-teal-200" :
+                          dependent.status === "Stable" ? "bg-cyan-100 text-cyan-700 border-cyan-200" : "bg-amber-100 text-amber-700 border-amber-200"
+                        }`}>
+                          {dependent.status}
+                        </span>
+                        <span className="text-sm text-teal-600">
+                          Mood: {dependent.mood}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                  <span className="text-sm text-teal-500">
+                    Checked: {dependent.lastCheck}
+                  </span>
+                  <button type="button" onClick={() => openChatModal(dependent)} className="p-2 rounded-lg hover:bg-teal-200 transition-all cursor-pointer">
+                    <FaComments className="text-teal-400 hover:text-teal-600" />
+                  </button>
+                  <button type="button" onClick={() => handleDependentView(dependent.id)} className="p-2 rounded-lg hover:bg-teal-200 transition-all cursor-pointer">
+                    <FaEye className="text-teal-400 hover:text-teal-600" />
+                  </button>
+                </div>
+              </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-teal-600">
+                <p className="text-sm">No dependents match your search</p>
+              </div>
+            )}
+          </div>
+
+          {/* Pagination for Dependents */}
+          {totalDependentPages > 1 && displayDependents.length > 0 && (
+            <div className="mt-6 flex items-center justify-between">
+              <p className="text-sm text-teal-600">
+                Page {currentDependentPage} of {totalDependentPages} • Showing {paginatedDependents.length} of {displayDependents.length}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentDependentPage(p => Math.max(p - 1, 1))}
+                  disabled={currentDependentPage === 1}
+                  className="px-3 py-2 text-sm font-medium text-teal-600 hover:bg-teal-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  ← Previous
+                </button>
+                {Array.from({ length: totalDependentPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentDependentPage(page)}
+                    className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                      currentDependentPage === page
+                        ? 'bg-teal-600 text-white'
+                        : 'text-teal-600 hover:bg-teal-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentDependentPage(p => Math.min(p + 1, totalDependentPages))}
+                  disabled={currentDependentPage === totalDependentPages}
+                  className="px-3 py-2 text-sm font-medium text-teal-600 hover:bg-teal-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Quick Actions Panel */}
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-gradient-to-br from-teal-500 to-cyan-500 p-3 rounded-xl shadow-md">
+              <FaPlus className="text-white text-lg" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-teal-900">Quick Actions</h3>
+              <p className="text-teal-600 text-sm">Manage your caregiving tasks</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              { icon: FaUserFriends, label: "Add New Dependent", color: "bg-gradient-to-br from-teal-500 to-cyan-500" },
+              { icon: FaClipboardList, label: "Create Task List", color: "bg-gradient-to-br from-teal-400 to-cyan-400" },
+              { icon: FaBell, label: "Send Health Alert", color: "bg-gradient-to-br from-teal-600 to-cyan-600" },
+              { icon: FaNotesMedical, label: "Generate Report", color: "bg-gradient-to-br from-teal-500 to-cyan-500" },
+              { icon: FaCalendarAlt, label: "Schedule Appointment", color: "bg-gradient-to-br from-teal-400 to-cyan-400" },
+              { icon: FaDownload, label: "Export Health Data", color: "bg-gradient-to-br from-teal-600 to-cyan-600" },
+            ].map((action, idx) => (
+              <button
+                type="button"
+                key={idx}
+                onClick={() => handleQuickAction(action.label)}
+                className="group/btn w-full flex items-center gap-4 p-3 rounded-xl border border-teal-100 hover:border-teal-300 hover:shadow-md transition-all duration-300 hover:bg-teal-50 cursor-pointer"
+              >
+                <div className={`${action.color} p-3 rounded-lg shadow-sm`}>
+                  <action.icon className="text-white text-lg" />
+                </div>
+                <span className="font-medium text-teal-700 group-hover/btn:text-teal-900 flex-1 text-left">
+                  {action.label}
+                </span>
+                <FaChevronRight className="text-teal-400 group-hover/btn:text-teal-600" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity Table */}
+      <div className="bg-white shadow-lg rounded-2xl overflow-hidden border border-teal-100">
+        <div className="p-6 border-b border-teal-100 bg-gradient-to-r from-teal-50 to-cyan-50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-teal-500 to-cyan-500 p-3 rounded-xl shadow-md">
+                <FaClock className="text-white text-lg" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-teal-900">Recent Activity</h3>
+                <p className="text-teal-600 text-sm">Latest updates from your dependents</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <select className="border border-teal-200 rounded-lg px-3 py-2 text-sm text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white">
+                <option className="text-teal-700">Last 24 hours</option>
+                <option className="text-teal-700">Last 7 days</option>
+                <option className="text-teal-700">Last 30 days</option>
+              </select>
+              <button type="button" className="p-2 rounded-lg hover:bg-teal-100 border border-teal-200 cursor-pointer">
+                <FaEllipsisH className="text-teal-500" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-teal-50">
+                <th className="text-left p-4 text-teal-700 font-semibold">Dependent</th>
+                <th className="text-left p-4 text-teal-700 font-semibold">Activity</th>
+                <th className="text-left p-4 text-teal-700 font-semibold">Time</th>
+                <th className="text-left p-4 text-teal-700 font-semibold">Status</th>
+                <th className="text-left p-4 text-teal-700 font-semibold">Priority</th>
+                <th className="text-left p-4 text-teal-700 font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedActivities.length > 0 ? (
+                paginatedActivities.map((activity) => (
+                  <tr
+                    key={activity.id}
+                    className="border-t border-teal-100 hover:bg-teal-50 transition-colors duration-200"
+                  >
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center border border-teal-200">
+                          <FaUserFriends className="text-teal-500" />
+                        </div>
+                        <span className="font-semibold text-teal-900">
+                          {activity.dependent}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4 text-teal-700">{activity.activity}</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2 text-teal-600">
+                        <FaClock className="text-sm" />
+                        {activity.time}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm border ${
+                        activity.status === "completed"
+                          ? "bg-teal-100 text-teal-700 border-teal-200"
+                          : "bg-red-100 text-red-700 border-red-200"
+                      }`}>
+                        {activity.status === "completed" ? (
+                          <FaCheckCircle className="text-sm text-teal-600" />
+                        ) : (
+                          <FaExclamationTriangle className="text-sm text-red-600" />
+                        )}
+                        {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className="px-3 py-1 rounded-full text-xs font-bold border"
+                        style={{
+                          backgroundColor: priorityColors[activity.priority] + "20",
+                          color: priorityColors[activity.priority],
+                          borderColor: priorityColors[activity.priority] + "30"
+                        }}
+                      >
+                        {activity.priority.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => handleActivityAction(activity.id, 'view')} className="p-2 rounded-lg hover:bg-teal-100 border border-teal-200 cursor-pointer">
+                          <FaEye className="text-teal-400 hover:text-teal-600" />
+                        </button>
+                        <button type="button" onClick={() => handleActivityAction(activity.id, 'approve')} className="p-2 rounded-lg hover:bg-teal-100 border border-teal-200 cursor-pointer">
+                          <FaCheckCircle className="text-teal-400 hover:text-teal-600" />
+                        </button>
+                        <button type="button" onClick={() => handleActivityAction(activity.id, 'alert')} className="p-2 rounded-lg hover:bg-red-50 border border-red-200 cursor-pointer">
+                          <FaBell className="text-red-400 hover:text-red-600" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="p-8 text-center text-teal-600">
+                    <p className="text-sm">No activities match your search</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Pagination for Activities */}
+          {totalActivityPages > 1 && displayActivities.length > 0 && (
+            <div className="mt-6 flex items-center justify-between px-6">
+              <p className="text-sm text-teal-600">
+                Page {currentActivityPage} of {totalActivityPages} • Showing {paginatedActivities.length} of {displayActivities.length}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentActivityPage(p => Math.max(p - 1, 1))}
+                  disabled={currentActivityPage === 1}
+                  className="px-3 py-2 text-sm font-medium text-teal-600 hover:bg-teal-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  ← Previous
+                </button>
+                {Array.from({ length: totalActivityPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentActivityPage(page)}
+                    className={`px-3 py-2 text-sm font-medium rounded-lg transition ${
+                      currentActivityPage === page
+                        ? 'bg-teal-600 text-white'
+                        : 'text-teal-600 hover:bg-teal-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentActivityPage(p => Math.min(p + 1, totalActivityPages))}
+                  disabled={currentActivityPage === totalActivityPages}
+                  className="px-3 py-2 text-sm font-medium text-teal-600 hover:bg-teal-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 border-t border-teal-100 bg-teal-50">
+          <button type="button" onClick={() => { openModal('viewActivities'); }} className="w-full py-3 text-teal-600 hover:text-teal-700 font-semibold hover:bg-teal-100 rounded-lg transition-colors border border-teal-200 cursor-pointer">
+            View All Activity →
+          </button>
+        </div>
+      </div>
+        </>
+      )}
+      </section>
+
+      {/* HEALTH METRICS TAB */}
+      <section id="health-panel" role="tabpanel" aria-labelledby="health-tab" hidden={activeTab !== "health"}>
+      {activeTab === "health" && (
+        <>
+      {/* Health Metrics Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Medication Adherence Chart */}
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-teal-900">Medication Adherence</h3>
+              <p className="text-teal-600 text-sm">Daily completion rates across all dependents</p>
+            </div>
+            <FaMedkit className="text-teal-500 text-2xl" />
+          </div>
+
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={medicationData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="time" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar
+                  dataKey="completed"
+                  name="Completed"
+                  fill="#0d9488"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="missed"
+                  name="Missed"
+                  fill="#ef4444"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <div className="text-teal-600">
+              Overall adherence rate: <span className="font-bold text-teal-700">92%</span>
+            </div>
+            <button type="button" onClick={() => { toast.success("Opening review scheduler..."); openModal('scheduleAppointment'); }} className="text-teal-600 hover:text-teal-700 font-medium hover:bg-teal-50 px-3 py-1 rounded-lg transition-colors cursor-pointer">
+              Schedule Review →
+            </button>
+          </div>
+        </div>
+
+        {/* Vital Signs Summary */}
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-teal-900">Vital Signs Summary</h3>
+              <p className="text-teal-600 text-sm">Current health metrics for all dependents</p>
+            </div>
+            <FaHeartbeat className="text-teal-500 text-2xl" />
+          </div>
+
+          <div className="space-y-4">
+            {dependents.slice(0, 3).map((dependent) => (
+              <div key={dependent.id} className="p-4 bg-teal-50 rounded-xl border border-teal-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-teal-900">{dependent.name}</h4>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    dependent.status === "Excellent" ? "bg-green-100 text-green-700" :
+                    dependent.status === "Stable" ? "bg-blue-100 text-blue-700" :
+                    "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {dependent.status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div className="bg-white p-2 rounded text-center border border-teal-100">
+                    <div className="font-bold text-teal-900">120/80</div>
+                    <div className="text-xs text-teal-600">BP (mmHg)</div>
+                  </div>
+                  <div className="bg-white p-2 rounded text-center border border-teal-100">
+                    <div className="font-bold text-teal-900">72</div>
+                    <div className="text-xs text-teal-600">Heart Rate</div>
+                  </div>
+                  <div className="bg-white p-2 rounded text-center border border-teal-100">
+                    <div className="font-bold text-teal-900">98.6°F</div>
+                    <div className="text-xs text-teal-600">Temp</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Health Alerts */}
+      <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="bg-gradient-to-br from-red-500 to-pink-500 p-3 rounded-xl shadow-md">
+            <FaExclamationTriangle className="text-white text-lg" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-teal-900">Health Alerts</h3>
+            <p className="text-teal-600 text-sm">Recent health concerns requiring attention</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="p-4 bg-red-50 rounded-xl border border-red-200">
+            <div className="flex items-start gap-3">
+              <FaExclamationTriangle className="text-red-500 mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-red-900">Elevated Blood Pressure</h4>
+                <p className="text-sm text-red-700 mt-1">Patricia's blood pressure reading is 145/92 (elevated)</p>
+                <p className="text-xs text-red-600 mt-2">Recorded 2 hours ago</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+            <div className="flex items-start gap-3">
+              <FaExclamationTriangle className="text-yellow-600 mt-1 flex-shrink-0" />
+              <div className="flex-1">
+                <h4 className="font-semibold text-yellow-900">Missed Medication Doses</h4>
+                <p className="text-sm text-yellow-700 mt-1">Robert missed 2 doses of his diabetes medication this week</p>
+                <p className="text-xs text-yellow-600 mt-2">Recorded 1 day ago</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+        </>
+      )}
+      </section>
+
+      {/* REPORTS TAB */}
+      <section id="reports-panel" role="tabpanel" aria-labelledby="reports-tab" hidden={activeTab !== "reports"}>
+      {activeTab === "reports" && (
+        <>
+      {/* Mood Trends Chart for Reports */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-teal-900">Mood Trends</h3>
+              <p className="text-teal-600 text-sm">Weekly emotional patterns</p>
+            </div>
+            <FaSmileBeam className="text-teal-500 text-2xl" />
+          </div>
+
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={moodData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="day" stroke="#6b7280" />
+                <YAxis stroke="#6b7280" />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="positive"
+                  name="Positive"
+                  stroke={moodColors.positive}
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="neutral"
+                  name="Neutral"
+                  stroke={moodColors.neutral}
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="negative"
+                  name="Negative"
+                  stroke={moodColors.negative}
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-teal-600"></div>
+                <span className="text-teal-600">Positive</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-teal-500"></div>
+                <span className="text-teal-600">Neutral</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-teal-700"></div>
+                <span className="text-teal-600">Negative</span>
+              </div>
+            </div>
+            <button type="button" onClick={() => { openModal('viewReports'); }} className="text-teal-600 hover:text-teal-700 font-medium hover:bg-teal-50 px-3 py-1 rounded-lg transition-colors cursor-pointer">
+              View Details →
+            </button>
+          </div>
+        </div>
+
+        {/* Report Summary */}
+        <div className="bg-white shadow-lg rounded-2xl p-6 border border-teal-100">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-teal-900">Monthly Report Summary</h3>
+              <p className="text-teal-600 text-sm">Key insights and metrics</p>
+            </div>
+            <FaNotesMedical className="text-teal-500 text-2xl" />
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-green-700">Overall Health Score</p>
+                  <p className="text-3xl font-bold text-green-600">86%</p>
+                </div>
+                <FaArrowUp className="text-green-500 text-3xl" />
+              </div>
+            </div>
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-blue-700">Medication Compliance</p>
+                  <p className="text-3xl font-bold text-blue-600">92%</p>
+                </div>
+                <FaCheckCircle className="text-blue-500 text-3xl" />
+              </div>
+            </div>
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-purple-700">Appointment Attendance</p>
+                  <p className="text-3xl font-bold text-purple-600">100%</p>
+                </div>
+                <FaCalendarCheck className="text-purple-500 text-3xl" />
+              </div>
+            </div>
+          </div>
+
+          <button type="button" onClick={() => { toast.success("Generating report..."); }} className="w-full mt-4 py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition cursor-pointer">
+            Generate Full Report
+          </button>
+        </div>
+      </div>
+        </>
+      )}
+
+      {/* Performance Metrics - Always Show */}
+      <div className="bg-gradient-to-r from-teal-600 to-cyan-600 rounded-2xl p-8 text-white shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h3 className="text-2xl font-bold mb-2">Your Performance Score</h3>
+            <p className="opacity-90">Based on completion rates and dependent satisfaction</p>
+          </div>
+          <div className="text-center">
+            <div className="text-6xl font-black">{performanceData.overallScore || 0}</div>
+            <div className="flex items-center gap-1">
+              {[...Array(5)].map((_, i) => (
+                <FaStar key={i} className="text-yellow-300" />
+              ))}
+              <span className="ml-2 font-semibold">{performanceData.rating || "N/A"}</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+            <div className="text-2xl font-bold">{performanceData.taskCompletion || 0}%</div>
+            <div className="text-sm opacity-90">Task Completion</div>
+          </div>
+          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+            <div className="text-2xl font-bold">{performanceData.medicationAdherence || 0}%</div>
+            <div className="text-sm opacity-90">Medication Adherence</div>
+          </div>
+          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+            <div className="text-2xl font-bold">{performanceData.moodPositivity || 0}%</div>
+            <div className="text-sm opacity-90">Mood Positivity</div>
+          </div>
+          <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+            <div className="text-2xl font-bold">{performanceData.responseTime || 0}%</div>
+            <div className="text-sm opacity-90">Response Time</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modals */}
+      <AddDependentModal
+        isOpen={modals.addDependent}
+        onClose={() => closeModal('addDependent')}
+      />
+      <CreateTaskModal
+        isOpen={modals.createTask}
+        onClose={() => closeModal('createTask')}
+      />
+      <SendAlertModal
+        isOpen={modals.sendAlert}
+        onClose={() => closeModal('sendAlert')}
+      />
+      <ScheduleAppointmentModal
+        isOpen={modals.scheduleAppointment}
+        onClose={() => closeModal('scheduleAppointment')}
+      />
+      <CaregiverChatModal
+        isOpen={modals.chat}
+        onClose={() => closeModal('chat')}
+        dependent={selectedDependentForChat}
+      />
+
+      {/* View Reports Modal */}
+      {modals.viewReports && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-teal-600 to-cyan-600 text-white p-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Mood Trends & Reports</h2>
+              <button
+                onClick={() => closeModal('viewReports')}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
+                  <div className="text-sm text-green-700">Positive Mood Days</div>
+                  <div className="text-3xl font-bold text-green-600">12</div>
+                </div>
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+                  <div className="text-sm text-blue-700">Neutral Mood Days</div>
+                  <div className="text-3xl font-bold text-blue-600">8</div>
+                </div>
+                <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl border border-red-200">
+                  <div className="text-sm text-red-700">Negative Mood Days</div>
+                  <div className="text-3xl font-bold text-red-600">3</div>
+                </div>
+              </div>
+              <div className="bg-teal-50 p-4 rounded-xl border border-teal-200">
+                <h3 className="font-bold text-teal-900 mb-2">Mood Insights</h3>
+                <ul className="text-sm text-teal-700 space-y-2">
+                  <li>• Overall mood trend is <strong>positive</strong> this month</li>
+                  <li>• Highest mood recorded on <strong>January 15th</strong></li>
+                  <li>• Consistent improvement since last week</li>
+                  <li>• Recommend continued current care routine</li>
+                </ul>
+              </div>
+              <button
+                type="button"
+                onClick={() => { toast.success("Exporting report..."); closeModal('viewReports'); }}
+                className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition"
+              >
+                Export Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Activities Modal */}
+      {modals.viewActivities && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-teal-600 to-cyan-600 text-white p-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">All Activities</h2>
+              <button
+                onClick={() => closeModal('viewActivities')}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              {recentActivity && recentActivity.length > 0 ? (
+                recentActivity.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-center justify-between p-4 bg-teal-50 rounded-xl border border-teal-200 hover:bg-teal-100 transition"
+                  >
+                    <div className="flex-1">
+                      <div className="font-semibold text-teal-900">{activity.activity}</div>
+                      <div className="text-sm text-teal-600">{activity.dependent}</div>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      activity.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      activity.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-teal-600">No activities recorded</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View All Dependents Modal */}
+      {modals.viewAllDependents && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-96 overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-teal-600 to-cyan-600 text-white p-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">All Dependents ({dependents.length})</h2>
+              <button
+                onClick={() => closeModal('viewAllDependents')}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              {dependents && dependents.length > 0 ? (
+                dependents.map((dependent) => (
+                  <div
+                    key={dependent.id}
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-200 hover:border-teal-400 hover:shadow-md transition"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white font-bold shadow-md">
+                        {dependent.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-teal-900">{dependent.name}</div>
+                        <div className="text-sm text-teal-600">Age: {dependent.age}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        dependent.status === 'stable' ? 'bg-green-100 text-green-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {dependent.status.charAt(0).toUpperCase() + dependent.status.slice(1)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { handleDependentView(dependent.id); closeModal('viewAllDependents'); }}
+                        className="text-teal-600 hover:text-teal-700 font-semibold text-sm hover:bg-teal-100 px-3 py-1 rounded-lg transition"
+                      >
+                        View
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-teal-600">No dependents added yet</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Panel */}
+      {showNotificationsPanel && (
+        <div className="fixed top-20 right-6 bg-white rounded-2xl shadow-2xl border border-teal-200 w-80 max-h-96 overflow-y-auto z-[9999]">
+          <div className="sticky top-0 bg-gradient-to-r from-teal-600 to-cyan-600 text-white p-4 flex items-center justify-between rounded-t-2xl">
+            <h3 className="font-bold">Notifications (3)</h3>
+            <button
+              type="button"
+              onClick={() => setShowNotificationsPanel(false)}
+              className="text-white hover:bg-white/20 rounded-full p-1 transition"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-0 divide-y divide-teal-100">
+            {/* Notification 1 */}
+            <div className="p-4 hover:bg-teal-50 transition cursor-pointer border-l-4 border-green-500">
+              <div className="font-semibold text-teal-900 text-sm">Mary's medication due</div>
+              <div className="text-xs text-teal-600 mt-1">Mary Johnson needs to take her morning medications</div>
+              <div className="text-xs text-teal-500 mt-2">5 minutes ago</div>
+            </div>
+
+            {/* Notification 2 */}
+            <div className="p-4 hover:bg-teal-50 transition cursor-pointer border-l-4 border-yellow-500">
+              <div className="font-semibold text-teal-900 text-sm">Appointment reminder</div>
+              <div className="text-xs text-teal-600 mt-1">Robert Smith's cardiology appointment tomorrow at 11:00 AM</div>
+              <div className="text-xs text-teal-500 mt-2">2 hours ago</div>
+            </div>
+
+            {/* Notification 3 */}
+            <div className="p-4 hover:bg-teal-50 transition cursor-pointer border-l-4 border-red-500">
+              <div className="font-semibold text-teal-900 text-sm">Health alert</div>
+              <div className="text-xs text-teal-600 mt-1">Patricia's blood pressure reading is elevated (145/92)</div>
+              <div className="text-xs text-teal-500 mt-2">1 day ago</div>
+            </div>
+          </div>
+          <div className="border-t border-teal-100 p-4">
+            <button type="button" onClick={() => { setShowNotificationsPanel(false); openModal('viewAllNotifications'); }} className="w-full py-2 text-teal-600 hover:text-teal-700 font-semibold hover:bg-teal-50 rounded-lg transition cursor-pointer">
+              View All Notifications
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* All Notifications Modal */}
+      {modals.viewAllNotifications && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-teal-600 to-cyan-600 text-white p-6 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">All Notifications</h2>
+              <button
+                onClick={() => closeModal('viewAllNotifications')}
+                className="text-white hover:bg-white/20 rounded-full p-2 transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-3 divide-y divide-teal-100">
+              {/* Notification 1 */}
+              <div className="pb-4 pt-0">
+                <div className="flex items-start gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-green-500 flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-teal-900">Mary's medication due</div>
+                    <div className="text-sm text-teal-600 mt-1">Mary Johnson needs to take her morning medications</div>
+                    <div className="text-xs text-teal-500 mt-2">5 minutes ago</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notification 2 */}
+              <div className="pb-4 pt-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-yellow-500 flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-teal-900">Appointment reminder</div>
+                    <div className="text-sm text-teal-600 mt-1">Robert Smith's cardiology appointment tomorrow at 11:00 AM</div>
+                    <div className="text-xs text-teal-500 mt-2">2 hours ago</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notification 3 */}
+              <div className="pb-4 pt-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-red-500 flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-teal-900">Health alert</div>
+                    <div className="text-sm text-teal-600 mt-1">Patricia's blood pressure reading is elevated (145/92)</div>
+                    <div className="text-xs text-teal-500 mt-2">1 day ago</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notification 4 */}
+              <div className="pb-4 pt-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-blue-500 flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-teal-900">Task completed</div>
+                    <div className="text-sm text-teal-600 mt-1">James Wilson completed his physical therapy session</div>
+                    <div className="text-xs text-teal-500 mt-2">3 days ago</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notification 5 */}
+              <div className="pb-0 pt-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-2 h-2 mt-2 rounded-full bg-teal-500 flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-teal-900">Daily check-in reminder</div>
+                    <div className="text-sm text-teal-600 mt-1">Elizabeth's daily health check-in is pending</div>
+                    <div className="text-xs text-teal-500 mt-2">5 days ago</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      </section>
+    </div>
+  );
+}
+
+export default CaregiverDashboard;

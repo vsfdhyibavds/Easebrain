@@ -1,0 +1,228 @@
+<!-- Jinja2 Template -->
+
+<!-- <!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ subject }}</title>
+  </head>
+  <body>
+    <h2>Hello {{ recipient_name }},</h2>
+
+    <p>Please verify your email by clicking the link below:</p>
+
+    <p>
+      <a href="{{ verification_url }}" target="_blank">
+        {{ verification_url }}
+      </a>
+    </p>
+
+    <p>Thanks!</p>
+
+    <p>Best regards,<br />Easebrain Team</p>
+  </body>
+</html> -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ subject }}</title>
+    <style>
+      /* Reset styles for email compatibility */
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        background-color: #f5f7fa;
+        color: #333;
+      }
+
+      /* Container styling */
+      .email-container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Header styling */
+      .email-header {
+        background: linear-gradient(135deg, #0d9488 0%, #2bbbad 100%);
+        padding: 30px 20px;
+        text-align: center;
+      }
+
+      .logo {
+        color: white;
+        font-size: 28px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+      }
+
+      .tagline {
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 16px;
+        margin: 0;
+      }
+
+      /* Content styling */
+      .email-content {
+        padding: 30px;
+        text-align: center;
+      }
+
+      .greeting {
+        font-size: 24px;
+        color: #2c3e50;
+        margin-bottom: 25px;
+      }
+
+      .message {
+        font-size: 16px;
+        color: #34495e;
+        margin-bottom: 25px;
+        line-height: 1.7;
+      }
+
+      /* Button styling */
+      .verify-button {
+        display: inline-block;
+        background: linear-gradient(135deg, #0d9488 0%, #2bbbad 100%);
+        color: white !important;
+        text-decoration: none;
+        padding: 15px 30px;
+        border-radius: 10px;
+        font-weight: bold;
+        font-size: 16px;
+        margin: 25px 0;
+        box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
+        transition: all 0.3s ease;
+      }
+
+      .verify-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(13, 148, 136, 0.4);
+      }
+
+      /* Alternative link */
+      .link-text {
+        display: block;
+        font-size: 14px;
+        color: #7f8c8d;
+        margin: 15px 0 25px;
+      }
+
+      .link-url {
+        word-break: break-all;
+        color: #0d9488;
+        text-decoration: none;
+      }
+
+      /* Footer styling */
+      .email-footer {
+        background-color: #f8f9fa;
+        padding: 25px;
+        text-align: center;
+        border-top: 1px solid #eaeaea;
+      }
+
+      .footer-text {
+        font-size: 14px;
+        color: #7f8c8d;
+        margin-bottom: 15px;
+      }
+
+      .contact-link {
+        color: #0d9488;
+        text-decoration: none;
+      }
+
+      .signature {
+        margin-top: 20px;
+        font-weight: bold;
+        color: #2c3e50;
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 600px) {
+        .email-container {
+          margin: 10px;
+        }
+
+        .email-header,
+        .email-content,
+        .email-footer {
+          padding: 20px 15px;
+        }
+
+        .greeting {
+          font-size: 22px;
+        }
+
+        .verify-button {
+          padding: 14px 25px;
+          font-size: 15px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <!-- Header with gradient background -->
+      <div class="email-header">
+        <div class="logo">EASEBRAIN</div>
+        <p class="tagline">Empowering your path to mental clarity.</p>
+      </div>
+
+      <!-- Main content area -->
+      <div class="email-content">
+        <h2 class="greeting">Hello {{ recipient_name }},</h2>
+
+        <p class="message">
+          Welcome to Easebrain! To get started, we need to verify your email
+          address. This ensures you can securely access your account and receive
+          important updates.
+        </p>
+
+        <p class="message">
+          Click the button below to verify your email address:
+        </p>
+
+        <!-- Primary verification button -->
+        <a href="{{ verification_url }}" class="verify-button">Verify Email</a>
+
+        <!-- Alternative link for clients that don't render buttons -->
+        <p class="link-text">
+          If the button doesn't work, you can also copy and paste this link into
+          your browser:
+        </p>
+        <a href="{{ verification_url }}" class="link-url"
+          >{{ verification_url }}</a
+        >
+      </div>
+
+      <!-- Footer section -->
+      <div class="email-footer">
+        <p class="footer-text">
+          If you didn't create an Easebrain account, you can safely ignore this
+          email.
+        </p>
+        <p class="footer-text">
+          Need help? Contact our support team at
+          <a href="mailto:info@easebrain.com" class="contact-link"
+            >info@easebrain.com</a
+          >
+        </p>
+
+        <p class="signature">Best regards,<br />The Easebrain Team</p>
+      </div>
+    </div>
+  </body>
+</html>
