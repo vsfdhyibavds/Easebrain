@@ -24,7 +24,7 @@ with app.app_context():
 
     print(f"\n✅ Fresh verification token generated for: {email}")
     print("\n🔗 Verification URL:")
-    print(f"   https://easebrain-backend.onrender.com/api/verify/{token}")
+    print(f"   http://www.easebrain.live/api/verify/{token}")
     print("\n📋 Token expires in: 2 hours")
     print("\n💡 Token (valid until 2-hour expiry):")
     print(f"   {token}\n")

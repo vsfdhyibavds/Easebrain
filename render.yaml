@@ -26,9 +26,9 @@ services:
       - key: SENDER_EMAIL
         sync: false
       - key: FRONTEND_URL
-        value: https://frontend-easebrain.vercel.app
+        value: http://www.easebrain.live
       - key: VERIFY_BASE_URL
-        value: https://easebrain-backend.onrender.com
+        value: http://www.easebrain.live
 
 databases:
   - name: easebrain-db
