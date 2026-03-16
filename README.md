@@ -66,17 +66,10 @@ API: `http://localhost:5500`
 
 - **[Frontend README](./frontend-ease-brain/README.md)** - React app, pages, styling, deployment
 - **[Backend README](./backend-ease-brain/README.md)** - Flask API, security, performance, danger detection
-  - [Security & Authentication](./backend-ease-brain/README.md#-security--authentication)
-  - [Performance & Caching](./backend-ease-brain/README.md#-performance--caching-infrastructure)
-  - [Health Monitoring](./backend-ease-brain/README.md#health-check-endpoints)
-  - [API Docs](./backend-ease-brain/README.md#api-documentation)
-- **[Security Guide](./backend-ease-brain/SECURITY.md)** - Detailed security implementation and compliance
-- **[Admin Dashboard Phase 2](./frontend-ease-brain/ADMIN_DASHBOARD_PHASE2.md)** - Component library, hooks, API services
-- **[Danger Detector Summary](./DANGER_DETECTOR_SUMMARY.md)** - Detection system overview
-- **[Danger Detector Phase B](./DANGER_DETECTOR_PHASE_B.md)** - LLM enhancement details
-- **[API Documentation](http://localhost:5500/api/docs)** - Interactive Swagger UI and error codes
-- **[Caregiver Dashboard Analysis](./CAREGIVER_DASHBOARD_ANALYSIS.md)** - Dashboard architecture
-- **[Phase 1 Complete](./CAREGIVER_DASHBOARD_PHASE1_COMPLETE.md)** - Recent optimizations
+- **[Roles Troubleshooting](./README.md#-roles-troubleshooting)** - Failed to load roles solutions
+- **[Deployment Guide](./README.md#-production-deployment)** - Deploy to www.easebrain.live
+- **[Domain Configuration](./README.md#-domain-configuration)** - Domain setup and environment variables
+- **[API Documentation](http://localhost:5500/api/docs)** - Interactive Swagger UI
 
 ## ✨ Key Features
 
@@ -273,6 +266,159 @@ API: `http://localhost:5500`
 - Fine-tuning models on collected data
 - Rate limiting
 - Advanced analytics
+
+## 🚢 Deployment
+
+### Development
+
+```bash
+# Frontend
+npm run dev    # http://localhost:5173
+
+# Backend
+flask run --debug --port 5500
+```
+
+### Production
+
+**Frontend**: Render, Vercel, or any static hosting
+**Backend**: Render, Heroku, or any Python hosting
+
+See README files for detailed deployment instructions.
+
+---
+
+## 🌐 Domain Configuration
+
+Your EaseBrain application is fully configured for the `http://www.easebrain.live/` domain.
+
+### Production Domain URLs
+
+| Component | URL |
+|-----------|-----|
+| Frontend | `http://www.easebrain.live` |
+| Backend API | `http://www.easebrain.live/api` |
+| Email Verification | `http://www.easebrain.live/api/verify/{token}` |
+
+### Environment Variables
+
+**Backend** (`backend-ease-brain/.env` or Render Dashboard):
+```env
+FRONTEND_URL=http://www.easebrain.live
+VERIFY_BASE_URL=http://www.easebrain.live
+FLASK_ENV=production
+SECRET_KEY=<generate-random-key>
+JWT_SECRET=<generate-random-key>
+SENDGRID_API_KEY=SG.<your-api-key>
+SENDER_EMAIL=noreply@easebrain.live
+DATABASE_URL=postgresql://user:pass@host/db
+```
+
+**Frontend** (`frontend-ease-brain/.env` or deployment interface):
+```env
+VITE_BASE_URL=http://www.easebrain.live/api
+VITE_API_BASE_URL=http://www.easebrain.live/api
+```
+
+### DNS Configuration
+
+If setting up the domain yourself:
+
+```
+Type  TTL  Name               Value
+─────────────────────────────────────────────
+A     3600 www.easebrain.live <Backend-IP>
+CNAME 3600 easebrain.live     www.easebrain.live
+```
+
+---
+
+## 📋 Production Deployment Steps
+
+### 1. Backend Deployment (Render)
+
+```bash
+# 1. Code is already pushed to: https://github.com/vsfdhyibavds/Easebrain
+# 2. Go to render.com and create Web Service
+# 3. Connect GitHub repository
+# 4. Set environment variables in Render dashboard
+# 5. Render automatically deploys from render.yaml
+```
+
+### 2. Frontend Deployment (Vercel/Netlify)
+
+**Vercel (Recommended)**:
+```bash
+npm install -g vercel
+vercel  # Follow prompts, set VITE_BASE_URL environment variable
+```
+
+**Netlify**:
+```bash
+# Build frontend
+cd frontend-ease-brain && npm run build
+
+# Upload dist/ folder to Netlify
+# Configure environment variables in Netlify dashboard
+```
+
+### 3. Domain Setup
+
+- Register domain at GoDaddy, Namecheap, etc.
+- Add DNS records as shown above
+- Wait 5-30 minutes for DNS propagation
+- Test: `nslookup www.easebrain.live`
+
+---
+
+## 🔧 Roles Troubleshooting
+
+### If "Failed to load roles" Error Occurs
+
+Your database already has all 4 roles seeded:
+- ✅ Patient (ID: 5)
+- ✅ Caregiver (ID: 1)
+- ✅ Admin (ID: 3)
+- ✅ Organization (ID: 4)
+
+### Quick Fix
+
+**Terminal 1 - Start Backend**:
+```bash
+cd backend-ease-brain
+source venv/bin/activate
+python app.py
+# Should see: Running on http://localhost:5500/
+```
+
+**Terminal 2 - Test API**:
+```bash
+curl http://localhost:5500/api/roles
+# Should return JSON with 4 roles
+```
+
+**Terminal 3 - Start Frontend**:
+```bash
+cd frontend-ease-brain
+npm run dev
+# Should see: Local: http://localhost:5173/
+```
+
+Then open `http://localhost:5173` - role dropdown should show all 4 options.
+
+### Troubleshooting Checklist
+
+| Issue | Fix |
+|-------|-----|
+| Blank role dropdown | Ensure backend is running on :5500 |
+| CORS error | Check CORS origins in `backend-ease-brain/app.py` |
+| API 404 | Run `bash fix-roles.sh` to verify configuration |
+| Timeout | Restart both backend and frontend servers |
+| Empty response | Run `python seed_roles.py` in backend |
+
+For detailed troubleshooting, run: `bash fix-roles.sh`
+
+---
 
 ## 🚢 Deployment
 
