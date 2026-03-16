@@ -294,15 +294,16 @@ Your EaseBrain application is fully configured for the `http://www.easebrain.liv
 
 ### Production Domain URLs
 
-| Component | URL |
-|-----------|-----|
-| Frontend | `http://www.easebrain.live` |
-| Backend API | `http://www.easebrain.live/api` |
+| Component          | URL                                            |
+| ------------------ | ---------------------------------------------- |
+| Frontend           | `http://www.easebrain.live`                    |
+| Backend API        | `http://www.easebrain.live/api`                |
 | Email Verification | `http://www.easebrain.live/api/verify/{token}` |
 
 ### Environment Variables
 
 **Backend** (`backend-ease-brain/.env` or Render Dashboard):
+
 ```env
 FRONTEND_URL=http://www.easebrain.live
 VERIFY_BASE_URL=http://www.easebrain.live
@@ -315,6 +316,7 @@ DATABASE_URL=postgresql://user:pass@host/db
 ```
 
 **Frontend** (`frontend-ease-brain/.env` or deployment interface):
+
 ```env
 VITE_BASE_URL=http://www.easebrain.live/api
 VITE_API_BASE_URL=http://www.easebrain.live/api
@@ -348,12 +350,14 @@ CNAME 3600 easebrain.live     www.easebrain.live
 ### 2. Frontend Deployment (Vercel/Netlify)
 
 **Vercel (Recommended)**:
+
 ```bash
 npm install -g vercel
 vercel  # Follow prompts, set VITE_BASE_URL environment variable
 ```
 
 **Netlify**:
+
 ```bash
 # Build frontend
 cd frontend-ease-brain && npm run build
@@ -376,6 +380,7 @@ cd frontend-ease-brain && npm run build
 ### If "Failed to load roles" Error Occurs
 
 Your database already has all 4 roles seeded:
+
 - ✅ Patient (ID: 5)
 - ✅ Caregiver (ID: 1)
 - ✅ Admin (ID: 3)
@@ -384,6 +389,7 @@ Your database already has all 4 roles seeded:
 ### Quick Fix
 
 **Terminal 1 - Start Backend**:
+
 ```bash
 cd backend-ease-brain
 source venv/bin/activate
@@ -392,12 +398,14 @@ python app.py
 ```
 
 **Terminal 2 - Test API**:
+
 ```bash
 curl http://localhost:5500/api/roles
 # Should return JSON with 4 roles
 ```
 
 **Terminal 3 - Start Frontend**:
+
 ```bash
 cd frontend-ease-brain
 npm run dev
@@ -408,13 +416,13 @@ Then open `http://localhost:5173` - role dropdown should show all 4 options.
 
 ### Troubleshooting Checklist
 
-| Issue | Fix |
-|-------|-----|
-| Blank role dropdown | Ensure backend is running on :5500 |
-| CORS error | Check CORS origins in `backend-ease-brain/app.py` |
-| API 404 | Run `bash fix-roles.sh` to verify configuration |
-| Timeout | Restart both backend and frontend servers |
-| Empty response | Run `python seed_roles.py` in backend |
+| Issue               | Fix                                               |
+| ------------------- | ------------------------------------------------- |
+| Blank role dropdown | Ensure backend is running on :5500                |
+| CORS error          | Check CORS origins in `backend-ease-brain/app.py` |
+| API 404             | Run `bash fix-roles.sh` to verify configuration   |
+| Timeout             | Restart both backend and frontend servers         |
+| Empty response      | Run `python seed_roles.py` in backend             |
 
 For detailed troubleshooting, run: `bash fix-roles.sh`
 

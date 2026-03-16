@@ -106,6 +106,7 @@ cors_origins = [
 ### Rate Limiting
 
 Per-endpoint configuration:
+
 - Login: 5/minute (prevent brute force)
 - Signup: 5/minute
 - Other endpoints: 200/day, 50/hour
@@ -123,6 +124,7 @@ Per-endpoint configuration:
 ⚠️ **CRITICAL**: Never commit `.env` files or API keys to git.
 
 **If a secret was exposed:**
+
 ```bash
 # 1. Rotate the credential (e.g., SendGrid API key)
 # 2. Remove from git history
@@ -134,6 +136,7 @@ git push --force origin main
 ### Audit Logging
 
 All significant actions logged:
+
 - User authentication (login, signup, password reset)
 - Admin actions
 - Danger detection triggers
@@ -146,6 +149,7 @@ Location: See logs in runtime console or check backend logs.
 ### Rule-Based Detection (Phase A)
 
 **29 regex patterns** across 5 categories:
+
 - **Suicidal Ideation**: 8 patterns (highest weight)
 - **Means/Method**: 6 patterns
 - **Plan**: 5 patterns
@@ -162,6 +166,7 @@ Location: See logs in runtime console or check backend logs.
 ### LLM Enhancement (Phase B - Optional)
 
 Supported models:
+
 - OpenAI (GPT-4, GPT-3.5)
 - Anthropic (Claude)
 - Ollama (self-hosted)
@@ -197,6 +202,7 @@ curl http://localhost:5500/api/health
 ```
 
 Response includes:
+
 - Server status
 - Database connection status
 - Cache status
@@ -267,11 +273,13 @@ Response includes:
 ## 📖 Complete API Documentation
 
 Interactive API documentation available at:
+
 ```
 http://localhost:5500/api/docs
 ```
 
 Includes:
+
 - All endpoints with descriptions
 - Request/response examples
 - Error codes and meanings
@@ -294,6 +302,7 @@ Structured error responses:
 ```
 
 Error codes:
+
 - `VALIDATION_ERROR` - Input validation failed (400)
 - `AUTHENTICATION_ERROR` - Missing/invalid JWT (401)
 - `AUTHORIZATION_ERROR` - Insufficient permissions (403)
@@ -351,6 +360,7 @@ flask db downgrade
 ### Adding New Endpoints
 
 1. Create model in `models/`:
+
    ```python
    class MyModel(db.Model):
        id = db.Column(db.Integer, primary_key=True)
@@ -358,6 +368,7 @@ flask db downgrade
    ```
 
 2. Create resource in `resources/`:
+
    ```python
    from flask_restful import Resource
    class MyResource(Resource):
@@ -366,6 +377,7 @@ flask db downgrade
    ```
 
 3. Register in `app.py`:
+
    ```python
    api.add_resource(MyResource, "/my-endpoint")
    ```
@@ -391,6 +403,7 @@ startCommand: cd backend-ease-brain && gunicorn app:app
 ```
 
 Environment variables set in Render dashboard:
+
 - `SECRET_KEY` - Flask secret for sessions
 - `JWT_SECRET` - JWT signing key
 - `SENDGRID_API_KEY` - Email service
@@ -409,19 +422,20 @@ Environment variables set in Render dashboard:
 
 ## 📊 Project Statistics
 
-| Metric | Value |
-|--------|-------|
-| Lines of Code | 8000+ |
-| API Endpoints | 50+ |
-| Database Tables | 15+ |
-| Test Cases | 35+ |
-| Coverage | 85%+ |
-| Detection Patterns | 29 |
-| Documented Endpoints | 100% |
+| Metric               | Value |
+| -------------------- | ----- |
+| Lines of Code        | 8000+ |
+| API Endpoints        | 50+   |
+| Database Tables      | 15+   |
+| Test Cases           | 35+   |
+| Coverage             | 85%+  |
+| Detection Patterns   | 29    |
+| Documented Endpoints | 100%  |
 
 ## 📞 Troubleshooting
 
 ### Database Connection Error
+
 ```bash
 # Check DATABASE_URL in .env
 # Ensure PostgreSQL is running
@@ -430,6 +444,7 @@ Environment variables set in Render dashboard:
 ```
 
 ### Roles Not Loading
+
 ```bash
 # Seed roles
 python seed_roles.py
@@ -439,6 +454,7 @@ bash fix-roles.sh
 ```
 
 ### Email Not Sending
+
 ```bash
 # Check SENDGRID_API_KEY in .env
 # Verify SENDER_EMAIL is set
@@ -446,6 +462,7 @@ bash fix-roles.sh
 ```
 
 ### CORS Errors
+
 ```python
 # Update cors_origins in app.py
 cors_origins.append("your-frontend-domain")
