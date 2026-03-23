@@ -119,10 +119,17 @@ export default function SignupForm() {
         }
         const data = await response.json();
         console.log('Fetched roles in SignUp:', data);
-        setRoles(Array.isArray(data) ? data : []);
+
+        // Ensure data is an array and has valid role objects
+        const rolesArray = Array.isArray(data) ? data : [];
+        if (rolesArray.length === 0) {
+          console.warn("Roles endpoint returned empty array");
+        }
+        setRoles(rolesArray);
       } catch (err) {
         console.error("Error fetching roles:", err);
-        toast.error("Failed to load roles. Please refresh the page.");
+        toast.error("Failed to load roles. Please check your connection and refresh.");
+        setRoles([]); // Ensure empty array on error
       } finally {
         setRolesLoading(false);
       }
@@ -483,13 +490,17 @@ export default function SignupForm() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {roles && roles.length > 0 ? (
+                    {rolesLoading ? (
+                      <div className="text-sm text-gray-500 p-2">Loading roles...</div>
+                    ) : roles && roles.length > 0 ? (
                       roles.map((role) => (
                         <SelectItem key={role.id} value={role.id.toString()}>
                           {role.name}
                         </SelectItem>
                       ))
-                    ) : null}
+                    ) : (
+                      <div className="text-sm text-gray-500 p-2">No roles available</div>
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage />

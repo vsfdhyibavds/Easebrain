@@ -33,13 +33,13 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // Proxy all /api requests to the backend
         "/api": {
-          target: "http://www.easebrain.live",
+          target: "http://localhost:5500",
           changeOrigin: true,
           secure: false,
         },
         // Proxy all /community requests to the backend
         "^/community": {
-          target: "http://www.easebrain.live",
+          target: "http://localhost:5500",
           changeOrigin: true,
           rewrite: (path) => path,
         },
