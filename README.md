@@ -66,8 +66,9 @@ API: `http://localhost:5500`
 
 - **[Frontend README](./frontend-ease-brain/README.md)** - React app, pages, styling, deployment
 - **[Backend README](./backend-ease-brain/README.md)** - Flask API, security, performance, danger detection
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete Render deployment guide
+- **[RENDER_CHECKLIST.md](./RENDER_CHECKLIST.md)** - Pre-deployment checklist and troubleshooting
 - **[Roles Troubleshooting](./README.md#-roles-troubleshooting)** - Failed to load roles solutions
-- **[Deployment Guide](./README.md#-production-deployment)** - Deploy to www.easebrain.live
 - **[Domain Configuration](./README.md#-domain-configuration)** - Domain setup and environment variables
 - **[API Documentation](http://localhost:5500/api/docs)** - Interactive Swagger UI
 
@@ -335,43 +336,51 @@ CNAME 3600 easebrain.live     www.easebrain.live
 
 ---
 
-## 📋 Production Deployment Steps
+## 📋 Production Deployment - Render
 
-### 1. Backend Deployment (Render)
+**Status**: ✅ Ready for Production Deployment
 
-```bash
-# 1. Code is already pushed to: https://github.com/vsfdhyibavds/Easebrain
-# 2. Go to render.com and create Web Service
-# 3. Connect GitHub repository
-# 4. Set environment variables in Render dashboard
-# 5. Render automatically deploys from render.yaml
+### Quick Deployment
+
+1. **Sign Up**: Go to [render.com](https://render.com) and sign up with GitHub
+2. **Import**: Click "Infrastructure" → "Import from Git"
+3. **Deploy**: Select your repo and click "Create" (Render uses `render.yaml`)
+4. **Configure**: Add environment secrets via Render dashboard
+5. **Verify**: Check services are running (`Live` status)
+
+### Configuration
+
+**Required Environment Variables** (set in Render Dashboard):
+
+```
+SECRET_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(32))">
+JWT_SECRET_KEY=<generate: python -c "import secrets; print(secrets.token_urlsafe(32))">
+SENDGRID_API_KEY=<from SendGrid dashboard>
+SENDER_EMAIL=<verified email in SendGrid>
 ```
 
-### 2. Frontend Deployment (Vercel/Netlify)
+### Services Deployed
 
-**Vercel (Recommended)**:
+- ✅ **PostgreSQL Database** - Auto-created and initialized
+- ✅ **Backend API** - Python Flask on `easebrain-backend.onrender.com`
+- ✅ **Frontend** - React on `easebrain-frontend.onrender.com`
 
-```bash
-npm install -g vercel
-vercel  # Follow prompts, set VITE_BASE_URL environment variable
-```
+### Documentation
 
-**Netlify**:
+For detailed deployment instructions, see:
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete step-by-step guide
+- **[RENDER_CHECKLIST.md](./RENDER_CHECKLIST.md)** - Pre-deployment checklist
+- **[render.yaml](./render.yaml)** - Infrastructure as code configuration
 
-```bash
-# Build frontend
-cd frontend-ease-brain && npm run build
-
-# Upload dist/ folder to Netlify
-# Configure environment variables in Netlify dashboard
-```
-
-### 3. Domain Setup
+### Domain Setup
 
 - Register domain at GoDaddy, Namecheap, etc.
-- Add DNS records as shown above
+- In Render dashboard, add custom domains:
+  - Backend: `api.easebrain.live` → easebrain-backend
+  - Frontend: `www.easebrain.live` → easebrain-frontend
+- Update DNS CNAME records (Render provides values)
 - Wait 5-30 minutes for DNS propagation
-- Test: `nslookup www.easebrain.live`
+- Test: `curl https://api.easebrain.live/api/health`
 
 ---
 

@@ -685,6 +685,53 @@ def handle_rate_limit_error(error):
     )
 
 
+# --- Serve React Frontend Build ---
+import os
+from flask import send_from_directory
+
+# Determine the frontend build directory
+frontend_build_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "frontend-ease-brain", "dist"
+)
+
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    """Serve the React frontend build.
+
+    For all requests not matching /api/* routes, serve the built frontend.
+    This enables client-side routing for the SPA.
+    """
+    # If it's an API request, allow the default API handlers to take over
+    if path.startswith("api/"):
+        return handle_not_found_error(HTTPException(description="Resource not found"))
+
+    # Check if the requested file exists in the dist folder
+    if path and os.path.isfile(os.path.join(frontend_build_path, path)):
+        return send_from_directory(frontend_build_path, path)
+
+    # For all other requests, serve index.html (SPA routing)
+    index_path = os.path.join(frontend_build_path, "index.html")
+    if os.path.isfile(index_path):
+        return send_from_directory(frontend_build_path, "index.html")
+
+    # If frontend build doesn't exist, return a helpful message
+    logger.warning(
+        f"Frontend build not found at {frontend_build_path}. "
+        "Run 'npm run build' in frontend-ease-brain directory."
+    )
+    return (
+        jsonify(
+            {
+                "message": "Frontend build not found. Please build the frontend.",
+                "hint": "Run: cd ../frontend-ease-brain && npm install && npm run build",
+            }
+        ),
+        500,
+    )
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5500))
     is_production = os.environ.get("FLASK_ENV") == "production"
