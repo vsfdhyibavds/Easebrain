@@ -1,0 +1,14 @@
+{
+  "name": "easebrain",
+  "private": true,
+  "description": "EaseBrain - Mental Health Support Platform",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "echo 'Use individual package.json in backend-ease-brain and frontend-ease-brain'",
+    "build": "echo 'Build is handled by Render infrastructure configuration'"
+  },
+  "workspaces": [
+    "backend-ease-brain",
+    "frontend-ease-brain"
+  ]
+}

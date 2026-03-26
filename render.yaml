@@ -66,10 +66,10 @@ services:
     region: oregon
     plan: free
     buildCommand: |
-      cd frontend-ease-brain && \
+      cd /opt/render/project/frontend-ease-brain && \
       npm install && \
       VITE_BASE_URL=https://easebrain-backend.onrender.com/api npm run build
-    startCommand: npx serve -s frontend-ease-brain/dist -l 3000
+    startCommand: cd frontend-ease-brain && npx serve -s dist -l 3000
     envVars:
       - key: VITE_BASE_URL
         value: https://easebrain-backend.onrender.com/api
