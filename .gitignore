@@ -22,6 +22,10 @@ wheels/
 pip-log.txt
 pip-delete-this-directory.txt
 
+# Exception: Allow frontend-ease-brain src/lib directory
+!frontend-ease-brain/src/lib/
+!frontend-ease-brain/src/lib/**
+
 # Virtual Environments
 .venv/
 .venv
