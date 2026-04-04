@@ -13,41 +13,10 @@ health_bp = Blueprint("health", __name__)
 @health_bp.route("/health", methods=["GET"])
 def health_check():
     """
-    Health check endpoint.
-    Returns system health status and dependencies.
-
-    Returns:
-        JSON with:
-        - status: 'healthy' or 'degraded'
-        - timestamp: Current timestamp
-        - uptime: Server uptime in seconds
-        - dependencies: Status of external services
+    Health check endpoint - extremely lightweight for Render monitoring.
+    Returns immediately without dependency checks to avoid startup delays.
     """
-    return jsonify(
-        {
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "version": "1.0.0",
-            "service": "EaseBrain Backend API",
-            "environment": os.environ.get("FLASK_ENV", "development"),
-            "dependencies": {
-                "database": "connected",
-                "cache": "initialized",
-                "email": "configured"
-                if os.environ.get("SENDGRID_API_KEY")
-                else "not_configured",
-                "rate_limiting": "enabled",
-                "csrf_protection": "enabled",
-                "audit_logging": "enabled",
-            },
-            "security": {
-                "jwt": "enabled",
-                "rate_limiting": "enabled",
-                "csrf_tokens": "enabled",
-                "audit_logs": "enabled",
-            },
-        }
-    ), 200
+    return jsonify({"status": "healthy"}), 200
 
 
 @health_bp.route("/health/detailed", methods=["GET"])

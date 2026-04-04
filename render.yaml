@@ -45,7 +45,6 @@ services:
         name: X-XSS-Protection
         value: "1; mode=block"
     healthCheckPath: /api/health
-    healthCheckInterval: 30
   # React Frontend (Static Site)
   - type: web
     name: easebrain-frontend
