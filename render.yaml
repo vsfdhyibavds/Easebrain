@@ -1,35 +1,28 @@
 services:
-  # PostgreSQL Database
-  - type: pserv
-    name: easebrain-db
-    ipAllowList: []
-    databaseName: easebrain
-    user: easebrain_user
-    region: oregon
-    plan: free
-
   # Python Flask Backend API
   - type: web
     name: easebrain-backend
     runtime: python
     region: oregon
     plan: free
+
     buildCommand: |
-      cd backend-ease-brain && \
-      pip install -r requirements.txt && \
-      FLASK_ENV=production python -m flask db upgrade
-    startCommand: cd backend-ease-brain && gunicorn -c gunicorn_config.py app:app
+      cd backend-ease-brain
+      pip install -r requirements.txt
+
+    startCommand: |
+      cd backend-ease-brain
+      flask db upgrade && gunicorn -c gunicorn_config.py app:app
+
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
-      - key: FLASK_ENV
-        value: production
-      - key: FLASK_DEBUG
-        value: "0"
+
       - key: DATABASE_URL
         fromDatabase:
           name: easebrain-db
           property: connectionString
+
       - key: SECRET_KEY
         sync: false
       - key: JWT_SECRET_KEY
@@ -38,14 +31,15 @@ services:
         sync: false
       - key: SENDER_EMAIL
         sync: false
+
       - key: FRONTEND_URL
         value: https://www.easebrain.live
       - key: VERIFY_BASE_URL
         value: https://www.easebrain.live/verify
+
       - key: WEB_CONCURRENCY
         value: "2"
-      - key: PORT
-        value: "10000"
+
     headers:
       - path: /api/*
         name: X-Frame-Options
@@ -56,29 +50,34 @@ services:
       - path: /api/*
         name: X-XSS-Protection
         value: "1; mode=block"
+
     healthCheckPath: /api/health
     healthCheckInterval: 600
+
 
   # React Frontend (Static Site)
   - type: web
     name: easebrain-frontend
-    runtime: node
+    runtime: static
     region: oregon
     plan: free
+
     buildCommand: |
-      cd frontend-ease-brain && \
-      npm install && \
-      VITE_BASE_URL=https://easebrain-backend.onrender.com/api npm run build
-    startCommand: cd frontend-ease-brain && npx serve -s dist -l 3000
+      cd frontend-ease-brain
+      npm install
+      npm run build
+
+    staticPublishPath: frontend-ease-brain/dist
+
     envVars:
       - key: VITE_BASE_URL
         value: https://easebrain-backend.onrender.com/api
-      - key: NODE_ENV
-        value: production
+
     routes:
       - type: rewrite
         source: /api/*
         destination: https://easebrain-backend.onrender.com/api/*
+
     headers:
       - path: /*
         name: X-Frame-Options
@@ -92,6 +91,7 @@ services:
       - path: /assets/*
         name: Cache-Control
         value: "public, max-age=31536000, immutable"
+
 
 databases:
   - name: easebrain-db
