@@ -34,22 +34,11 @@ services:
         value: https://www.easebrain.live/verify
       - key: WEB_CONCURRENCY
         value: "2"
-    headers:
-      - path: /api/*
-        name: X-Frame-Options
-        value: DENY
-      - path: /api/*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /api/*
-        name: X-XSS-Protection
-        value: "1; mode=block"
     healthCheckPath: /api/health
   # React Frontend (Static Site)
   - type: web
     name: easebrain-frontend
     runtime: static
-    region: oregon
     plan: free
     buildCommand: |
       cd frontend-ease-brain
