@@ -10,10 +10,12 @@ services:
       pip install -r requirements.txt
     startCommand: |
       cd backend-ease-brain
-      flask db upgrade && gunicorn -c gunicorn_config.py app:app
+      gunicorn -c gunicorn_config.py app:app
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
+      - key: FLASK_APP
+        value: app.py
       - key: DATABASE_URL
         fromDatabase:
           name: easebrain-db
@@ -58,10 +60,6 @@ services:
     envVars:
       - key: VITE_BASE_URL
         value: https://easebrain-backend.onrender.com/api
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://easebrain-backend.onrender.com/api/*
     headers:
       - path: /*
         name: X-Frame-Options
