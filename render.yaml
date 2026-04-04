@@ -39,7 +39,6 @@ services:
   - type: web
     name: easebrain-frontend
     runtime: static
-    plan: free
     buildCommand: |
       cd frontend-ease-brain
       npm install
