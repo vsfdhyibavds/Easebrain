@@ -3,11 +3,14 @@ import { createContext, useContext, useEffect, useMemo, useState, useCallback, R
 // ========== TYPE DEFINITIONS ==========
 
 interface User {
-  id?: string;
+  id?: string | number;
   email?: string;
   name?: string;
+  first_name?: string;
+  last_name?: string;
   roles?: string[];
   role_types?: string[];
+  role?: string;
   avatar?: string;
   [key: string]: any;
 }

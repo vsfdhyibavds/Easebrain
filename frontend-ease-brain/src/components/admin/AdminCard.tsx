@@ -1,7 +1,7 @@
 import { FC, ReactNode } from "react";
 import TrendIndicator from "./TrendIndicator";
 
-interface AdminCardProps {
+export interface AdminCardProps {
   title: string;
   value: string | number;
   icon?: ReactNode;

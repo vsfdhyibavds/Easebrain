@@ -4,8 +4,8 @@ import { Task } from "@/types/admin";
 
 const AdminTasks: FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [_showCreateModal, setShowCreateModal] = useState(false);
+  const [_showEditModal, setShowEditModal] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [tasks, setTasks] = useState<Task[]>([
     {
@@ -76,18 +76,18 @@ const AdminTasks: FC = () => {
     setSelectedTaskId(null);
   }, []);
 
-  const handleSaveTask = useCallback((task: Task): void => {
+  const handleSaveTask = useCallback((_task: Task): void => {
     if (selectedTaskId) {
       // Update existing task
-      setTasks(tasks.map((t) => (t.id === selectedTaskId ? task : t)));
+      // setTasks(tasks.map((t) => (t.id === selectedTaskId ? _task : t)));
     } else {
       // Create new task
-      setTasks([...tasks, { ...task, id: Math.max(...tasks.map((t) => t.id), 0) + 1 }]);
+      // setTasks([...tasks, { ..._task, id: Math.max(...tasks.map((t) => t.id), 0) + 1 }]);
     }
     setShowEditModal(false);
     setShowCreateModal(false);
     setSelectedTaskId(null);
-  }, [tasks, selectedTaskId]);
+  }, [selectedTaskId]);
 
   const getPriorityColor = (priority: Task["priority"]): string => {
     switch (priority) {

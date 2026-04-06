@@ -978,7 +978,7 @@ const CaregiverModalsWrapper: FC<CaregiverModalsWrapperProps> = ({
   isEditModalOpen = false,
   isDeleteModalOpen = false,
   onClose,
-  onSave,
+  onSave: _onSave,
 }) => {
   return (
     <>

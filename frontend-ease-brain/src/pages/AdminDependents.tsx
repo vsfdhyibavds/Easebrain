@@ -1,4 +1,4 @@
-import { useState, FC, ChangeEvent, useCallback, Suspense, lazy, useEffect } from "react";
+import { useState, FC, ChangeEvent, useCallback, useEffect } from "react";
 import { FaPlus, FaSearch, FaEdit, FaTrash } from "react-icons/fa";
 import { Dependent } from "@/types/admin";
 import EditDependentModal from "@/components/admin/EditDependentModal";
@@ -12,7 +12,7 @@ const AdminDependents: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [_showAddModal, setShowAddModal] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [selectedDependent, setSelectedDependent] = useState<Dependent | null>(
     null

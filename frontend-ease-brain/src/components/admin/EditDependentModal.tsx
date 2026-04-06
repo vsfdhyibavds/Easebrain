@@ -17,11 +17,16 @@ const EditDependentModal: FC<EditDependentModalProps> = ({
   onSave,
   onUpdate,
 }) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string;
+    age: number;
+    caregiver: string;
+    status: "Active" | "Inactive" | "Pending";
+  }>({
     name: "",
     age: 0,
     caregiver: "",
-    status: "Active" as const,
+    status: "Active",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -33,11 +38,15 @@ const EditDependentModal: FC<EditDependentModalProps> = ({
   // Update form data when dependent changes
   useEffect(() => {
     if (dependent) {
+      const validStatuses: ("Active" | "Inactive" | "Pending")[] = ["Active", "Inactive", "Pending"];
+      const status = (validStatuses.includes(dependent.status as any)
+        ? dependent.status
+        : "Active") as "Active" | "Inactive" | "Pending";
       setFormData({
         name: dependent.name,
         age: dependent.age,
         caregiver: dependent.caregiver,
-        status: dependent.status as "Active" | "Inactive" | "Pending",
+        status,
       });
       setErrors({});
       setSuccess(false);

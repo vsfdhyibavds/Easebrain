@@ -41,7 +41,7 @@ interface Role {
 interface LoginResponse {
   access_token: string;
   user: {
-    id: number;
+    id: string | number;
     email: string;
     first_name: string;
     last_name: string;
