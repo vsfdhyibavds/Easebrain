@@ -45,29 +45,37 @@ If you don't want to delete and re-create, you can manually fix the environment:
 
 ### For Frontend Service (Manual Fix):
 1. Go to **easebrain-frontend** → **Settings**
-2. Change **Build Command** to:
+2. Set **Environment** to `Static Site`
+3. Set **Root Directory** to:
    ```
-   cd frontend-ease-brain && npm install && npm run build
+   frontend-ease-brain
    ```
-3. Change **Start Command** to:
+4. Change **Build Command** to:
    ```
-   npx serve -s dist -l 3000
+   npm install --production=false && npm run build
    ```
-4. Ensure **Root Directory** is empty (use default "/")
-5. Click "Save" and Render will auto-redeploy
+5. Set **Publish Directory** (or Static Publish Path) to:
+   ```
+   dist
+   ```
+6. Click "Save" and Render will auto-redeploy
 
 ### For Backend Service (Manual Fix):
 1. Go to **easebrain-backend** → **Settings**
-2. Change **Build Command** to:
+2. Set **Environment** to `Python`
+3. Set **Root Directory** to:
    ```
-   cd backend-ease-brain && pip install -r requirements.txt && flask db upgrade
+   backend-ease-brain
    ```
-3. Change **Start Command** to:
+4. Change **Build Command** to:
    ```
-   cd backend-ease-brain && gunicorn -c gunicorn_config.py app:app
+   pip install -r requirements.txt
    ```
-4. Ensure **Root Directory** is empty (use default "/")
-5. Click "Save" and Render will auto-redeploy
+5. Change **Start Command** to:
+   ```
+   gunicorn -c gunicorn_config.py app:app
+   ```
+6. Click "Save" and Render will auto-redeploy
 
 ## Verification
 

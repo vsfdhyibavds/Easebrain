@@ -2,15 +2,12 @@ services:
   # Python Flask Backend API
   - type: web
     name: easebrain-backend
-    runtime: python
+    rootDir: backend-ease-brain
+    env: python
     region: oregon
     plan: free
-    buildCommand: |
-      cd backend-ease-brain
-      pip install -r requirements.txt
-    startCommand: |
-      cd backend-ease-brain
-      gunicorn -c gunicorn_config.py app:app
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn_config.py app:app
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
@@ -38,12 +35,10 @@ services:
   # React Frontend (Static Site)
   - type: web
     name: easebrain-frontend
-    runtime: static
-    buildCommand: |
-      cd frontend-ease-brain
-      npm install --production=false
-      npm run build
-    staticPublishPath: frontend-ease-brain/dist
+    rootDir: frontend-ease-brain
+    env: static
+    buildCommand: npm install --production=false && npm run build
+    staticPublishPath: dist
     envVars:
       - key: VITE_BASE_URL
         value: https://easebrain-backend.onrender.com/api

@@ -15,18 +15,14 @@ This guide covers deploying the EaseBrain platform to Render.com, including both
 ### 1. Connect Your GitHub Repository to Render
 
 1. Log in to your Render dashboard
-2. Click **New +** → **Web Service**
+2. Click **New +** → **Blueprint**
 3. Select **Build and deploy from a Git repository**
 4. Connect your GitHub account
 5. Select the repository: `your-username/easebrain`
-6. Set the following:
-   - **Name:** `easebrain-backend`
-   - **Root Directory:** (leave empty, Render will deploy from root)
-   - **Region:** Choose based on your users (Oregon for US)
-   - **Branch:** `main` (or your primary branch)
-   - **Runtime:** Python 3.12
-   - **Build Command:** Will be auto-filled from `render.yaml`
-   - **Start Command:** Will be auto-filled from `render.yaml`
+6. Confirm Render detects `render.yaml` and creates:
+   - `easebrain-backend` (`env: python`, `rootDir: backend-ease-brain`)
+   - `easebrain-frontend` (`env: static`, `rootDir: frontend-ease-brain`)
+   - `easebrain-db` (PostgreSQL)
 
 ### 2. Create a PostgreSQL Database
 
@@ -50,18 +46,22 @@ services:
   - type: web
     name: easebrain-backend
     env: python
-    buildCommand: |
-      pip install -r backend-ease-brain/requirements.txt && \
-      cd frontend-ease-brain && npm install && npm run build && \
-      cd ../backend-ease-brain && flask db upgrade
-    startCommand: gunicorn app:app
+    rootDir: backend-ease-brain
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn_config.py app:app
+  - type: web
+    name: easebrain-frontend
+    env: static
+    rootDir: frontend-ease-brain
+    buildCommand: npm install --production=false && npm run build
+    staticPublishPath: dist
 ```
 
 **Key Features:**
-- Builds frontend (React) and copies dist to backend
-- Runs database migrations on deploy
+- Separate backend and frontend services with explicit runtimes
+- Uses per-service `rootDir` to avoid runtime auto-detection issues
 - Uses Gunicorn for production WSGI
-- Serves frontend static files from Flask
+- Frontend served as a static site
 
 ### 4. Set Required Environment Variables
 
@@ -100,21 +100,19 @@ Use the `.env.render.example` file as a template for all available variables.
 
 ### 5. Application Configuration
 
-**Build Command Breakdown:**
+**Backend Build Command:**
 ```bash
-# Install Python dependencies
-pip install -r backend-ease-brain/requirements.txt
+pip install -r requirements.txt
+```
 
-# Build React frontend
-cd frontend-ease-brain && npm install && npm run build &&
-
-# Run database migrations
-cd ../backend-ease-brain && flask db upgrade
+**Frontend Build Command:**
+```bash
+npm install --production=false && npm run build
 ```
 
 **Start Command:**
 ```bash
-gunicorn app:app
+gunicorn -c gunicorn_config.py app:app
 ```
 
 Uses `gunicorn_config.py` for production optimization:
@@ -292,7 +290,7 @@ psql postgresql://user:password@host:5432/easebrain
 
 ### Migrations
 
-Migrations run automatically on deploy. To create a new migration:
+Migrations are not configured to run automatically in the current `render.yaml`. Create and apply them locally:
 
 ```bash
 # Locally
@@ -302,7 +300,12 @@ flask db upgrade
 git add migrations/
 git commit -m "Add migration"
 git push
-# Render will run flask db upgrade on next deploy
+```
+
+If you want automatic migration on deploy, add a Render pre-deploy command for the backend:
+
+```bash
+flask db upgrade
 ```
 
 ## 📖 Useful Resources
