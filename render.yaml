@@ -7,6 +7,7 @@ services:
     region: oregon
     plan: free
     buildCommand: pip install -r requirements.txt
+    preDeployCommand: python seed_roles.py
     startCommand: gunicorn -c gunicorn_config.py app:app
     envVars:
       - key: PYTHON_VERSION
