@@ -200,6 +200,11 @@ jwt = JWTManager(app)
 db.init_app(app)
 migrate = Migrate(app, db)
 
+# Auto-create tables on startup (for production deployment without migrations)
+with app.app_context():
+    db.create_all()
+    logger.info("Database tables created/verified successfully")
+
 # Initialize audit logging
 configure_audit_logging(app)
 
