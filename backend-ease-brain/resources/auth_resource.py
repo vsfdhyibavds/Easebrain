@@ -1,13 +1,14 @@
 import re
 import sys
 from flask_restful import Resource, reqparse
-from flask_jwt_extended import get_jwt_identity, create_access_token
+from flask_jwt_extended import get_jwt_identity, create_access_token, jwt_required, get_jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, UserVerification, Role, UserRole
 from extensions import db
 from utils.send_email import send_email_notification
 from utils.auth_helpers import get_user_roles, get_user_role_types
 from utils.audit_logger import log_auth_event
+from utils.jwt_blacklist import revoke_token
 from flask import url_for, request, current_app
 from datetime import datetime
 import secrets
@@ -35,7 +36,6 @@ class PasswordResetResource(Resource):
             }, 200
 
         # Create/update password reset token (use UserVerification model with a flag)
-        # For now, we'll create a new verification record or update existing
         verification = UserVerification.query.filter_by(user_id=user.id).first()
 
         if not verification:
@@ -51,13 +51,28 @@ class PasswordResetResource(Resource):
 
         db.session.commit()
 
-        # Construct reset URL with both token and email
-        frontend_url = current_app.config.get("FRONTEND_URL", "http://www.easebrain.live")
-        reset_url = f"{frontend_url}/reset-password?token={verification.token}&email={user.email}"
+        # SECURITY: Send password reset link WITHOUT token in URL
+        # Token should only be transmitted in request body via POST
+        frontend_url = current_app.config.get("FRONTEND_URL", "https://www.easebrain.live")
+        reset_page_url = f"{frontend_url}/reset-password"
 
-        # Send password reset email
+        # Send password reset email with token in body (not URL)
         subject = "Reset Your Password"
         recipient_name = user.first_name or user.username
+
+        email_body = f"""Hello {recipient_name},
+
+Click the link below to reset your password:
+{reset_page_url}
+
+You'll need this code to complete the reset:
+{verification.token}
+
+This link and code expire in 1 hour.
+
+For security, never share this code with anyone.
+
+Thanks!"""
 
         email_sent = send_email_notification(
             recipient_email=user.email,
@@ -65,8 +80,9 @@ class PasswordResetResource(Resource):
             template_data={
                 "recipient_name": recipient_name,
                 "subject": subject,
-                "verification_url": reset_url,
-                "plain_text": f"Hello {recipient_name},\n\nClick the link below to reset your password:\n{reset_url}\n\nThis link expires in 1 hour.\n\nThanks!",
+                "verification_url": reset_page_url,
+                "reset_code": verification.token,
+                "plain_text": email_body,
             },
         )
 
@@ -88,13 +104,18 @@ class PasswordResetConfirmResource(Resource):
     """Handle password reset confirmation with token"""
 
     def post(self):
-        """Confirm password reset with token"""
+        """Confirm password reset with token (sent in POST body, not URL)"""
         data = request.get_json(silent=True) or {}
         token = (data.get("token") or "").strip()  # Strip whitespace from token
         new_password = data.get("password")
+        email = (data.get("email") or "").strip()  # Optional: verify email for additional security
 
         if not token or not new_password:
             return {"message": "Token and new password are required"}, 400
+
+        # Validate password strength
+        if len(new_password) < 8:
+            return {"message": "Password must be at least 8 characters"}, 400
 
         # Find the verification record by token
         verification = UserVerification.query.filter_by(token=token).first()
@@ -103,12 +124,25 @@ class PasswordResetConfirmResource(Resource):
             return {"message": "Invalid or expired reset token"}, 400
 
         if verification.is_token_expired():
+            # Delete expired token to prevent reuse
+            db.session.delete(verification)
+            db.session.commit()
             return {"message": "Reset token has expired"}, 400
 
-        # Get user and reset password
+        # Verify email matches if provided
         user = verification.user
+        if email and user.email != email:
+            log_auth_event("password_reset_confirm", user.email, status="failure", details="Email mismatch")
+            return {"message": "Email does not match reset token"}, 400
+
+        # Prevent reusing the same password
+        if check_password_hash(user.password_hash, new_password):
+            return {"message": "New password must be different from current password"}, 400
+
+        # Reset password
         user.password_hash = generate_password_hash(new_password)
         verification.is_verified = True  # Mark as used
+        verification.expires_at = datetime.utcnow() - timedelta(hours=1)  # Expire token
 
         db.session.commit()
 
@@ -309,11 +343,30 @@ class SignupResource(Resource):
             }
 
             log_auth_event("signup", user.email, status="success")
-            return {
+            
+            # Create response data
+            response_data = {
                 "message": "User registered successfully. Please check your email to verify your account.",
                 "user": user_payload,
-                "access_token": access_token,
-            }, 201
+            }
+            
+            # Create Flask response object to set httpOnly cookie
+            from flask import make_response
+            response = make_response(response_data, 201)
+            
+            # Set JWT in httpOnly cookie (secure by default in production)
+            max_age = current_app.config.get("JWT_ACCESS_TOKEN_EXPIRES", 86400)
+            response.set_cookie(
+                "access_token_cookie",
+                access_token,
+                max_age=max_age,
+                httponly=True,
+                secure=current_app.config.get("JWT_COOKIE_SECURE", False),
+                samesite="Strict",
+                path="/",
+            )
+            
+            return response
         except Exception as e:
             error_msg = f"[SignUp] Error during registration: {str(e)}"
             print(error_msg, file=sys.stderr)
@@ -351,6 +404,8 @@ class LoginResource(Resource):
     )
 
     def post(self):
+        from flask import make_response
+        
         data = self.parser.parse_args()
 
         # Find active user
@@ -399,11 +454,29 @@ class LoginResource(Resource):
         }
 
         log_auth_event("login", user.email, status="success")
-        return {
+        
+        # Create response with user data and token
+        response_data = {
             "message": "Login successful",
-            "access_token": access_token,
             "user": user_payload,
-        }, 200
+        }
+        
+        # Create Flask response object to set httpOnly cookie
+        response = make_response(response_data, 200)
+        
+        # Set JWT in httpOnly cookie (secure by default in production)
+        max_age = current_app.config.get("JWT_ACCESS_TOKEN_EXPIRES", 86400)
+        response.set_cookie(
+            "access_token_cookie",
+            access_token,
+            max_age=max_age,
+            httponly=True,
+            secure=current_app.config.get("JWT_COOKIE_SECURE", False),
+            samesite="Strict",
+            path="/",
+        )
+        
+        return response
 
 
 class EmailVerificationResource(Resource):
@@ -512,3 +585,39 @@ class ResendVerificationEmailResource(Resource):
         )
 
         return {"message": "Verification email resent."}, 200
+
+
+class LogoutResource(Resource):
+    """Handle user logout and token revocation"""
+
+    @jwt_required()
+    def post(self):
+        """Logout user by revoking their JWT token and clearing cookie"""
+        from flask import make_response
+        
+        try:
+            user_id = get_jwt_identity()
+            jti = get_jwt().get("jti")  # JWT ID for revocation
+            expires_at = datetime.utcfromtimestamp(get_jwt().get("exp"))
+
+            if jti:
+                # Revoke the token
+                revoke_token(jti, expires_at)
+
+            log_auth_event("logout", f"user_id={user_id}", status="success")
+
+            # Create response
+            response_data = {"message": "Logged out successfully. Token revoked."}
+            response = make_response(response_data, 200)
+            
+            # Clear the JWT cookie
+            response.delete_cookie(
+                "access_token_cookie",
+                path="/",
+                samesite="Strict",
+            )
+            
+            return response
+        except Exception as e:
+            current_app.logger.error(f"Logout error: {str(e)}")
+            return {"message": "Logout failed"}, 500

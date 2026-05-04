@@ -17,6 +17,7 @@ from resources.user_resource import UserResource, CurrentUserResource
 from resources.auth_resource import (
     SignupResource,
     LoginResource,
+    LogoutResource,
     PasswordResetResource,
     PasswordResetConfirmResource,
 )
@@ -74,6 +75,8 @@ from models.message import Message
 from utils.audit_logger import configure_audit_logging
 from utils.rate_limiter import init_rate_limiting
 from utils.csrf_protection import csrf
+from utils.jwt_blacklist import init_token_blacklist
+from utils.security_headers import init_security_headers
 from utils.health_check import health_bp
 from utils.swagger_docs import swagger_bp
 from utils.error_responses import (
@@ -87,27 +90,46 @@ load_dotenv()
 
 app = Flask(__name__)
 # Configure sessions for CSRF protection
-app.config["SECRET_KEY"] = os.environ.get(
-    "SECRET_KEY", "dev-secret-change-in-production"
-)
+# SECURITY: SECRET_KEY must be explicitly set via environment variable
+secret_key = os.environ.get("SECRET_KEY")
+if not secret_key:
+    if os.environ.get("FLASK_ENV") == "production":
+        raise ValueError(
+            "❌ CRITICAL: SECRET_KEY environment variable must be set in production. "
+            "Generate with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+    # Development: use a temporary key (print warning)
+    secret_key = "dev-only-not-secure-change-immediately"
+    app.logger.warning("⚠️  WARNING: Using development SECRET_KEY. Set SECRET_KEY env var for production.")
+
+app.config["SECRET_KEY"] = secret_key
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Strict"
 app.config["PERMANENT_SESSION_LIFETIME"] = 86400  # 24 hours
 
 # Configure CORS origins based on environment
-cors_origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-    "http://www.easebrain.live",
-    "https://www.easebrain.live",
-]
+# SECURITY: Only allow specific origins in production
+cors_origins = []
 
-# Add production frontend URL if set
+if os.environ.get("FLASK_ENV") == "production":
+    # Production: only allow production domain
+    cors_origins = [
+        "https://www.easebrain.live",
+        os.environ.get("FRONTEND_URL", "https://www.easebrain.live"),
+    ]
+else:
+    # Development: allow localhost
+    cors_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+    ]
+
+# Add frontend URL if set and not already present
 frontend_url = os.environ.get("FRONTEND_URL", "")
 if frontend_url and frontend_url not in cors_origins:
     cors_origins.append(frontend_url)
@@ -119,9 +141,10 @@ CORS(
             "origins": cors_origins,
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True,
+            "max_age": 3600,  # Cache preflight requests for 1 hour
         }
     },
-    supports_credentials=True,
 )
 
 # module logger
@@ -181,16 +204,22 @@ app.config["JWT_SECRET_KEY"] = jwt_secret
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = int(
     os.environ.get("JWT_ACCESS_TOKEN_EXPIRES", 86400)
 )  # seconds
-app.config["JWT_TOKEN_LOCATION"] = [os.environ.get("JWT_TOKEN_LOCATION", "headers")]
+# Support both header-based (for API clients) and cookie-based (for web apps) JWT
+app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
 app.config["JWT_HEADER_NAME"] = os.environ.get("JWT_HEADER_NAME", "Authorization")
 app.config["JWT_HEADER_TYPE"] = os.environ.get("JWT_HEADER_TYPE", "Bearer")
+# Secure cookie configuration
 app.config["JWT_COOKIE_SECURE"] = (
     os.environ.get("FLASK_ENV", "development") == "production"
 )
+app.config["JWT_COOKIE_HTTPONLY"] = True  # Prevent JavaScript access
+app.config["JWT_COOKIE_SAMESITE"] = "Strict"  # CSRF protection
 app.config["JWT_COOKIE_CSRF_PROTECT"] = (
     os.environ.get("JWT_COOKIE_CSRF_PROTECT", "True") == "True"
 )
 app.config["BUNDLE_ERRORS"] = os.environ.get("BUNDLE_ERRORS", "True") == "True"
+app.config["JWT_ERROR_MESSAGE_KEY"] = "message"
+app.config["JWT_DECODE_LEEWAY"] = 10  # Allow 10 seconds of leeway for token expiration
 
 # Initialize extensions
 ## db is imported from extensions
@@ -213,6 +242,12 @@ init_rate_limiting(app)
 
 # Initialize CSRF protection
 csrf.init_app(app)
+
+# Initialize JWT token blacklist for revocation
+init_token_blacklist(app)
+
+# Initialize security headers (CSP, HSTS, X-Frame-Options, etc.)
+init_security_headers(app)
 
 # Log environment variables for email configuration on startup
 logger.info("=" * 60)
@@ -288,6 +323,7 @@ api.add_resource(UserResource, "/users", "/users/<int:user_id>")
 api.add_resource(CurrentUserResource, "/me")
 api.add_resource(SignupResource, "/signup")
 api.add_resource(LoginResource, "/login")
+api.add_resource(LogoutResource, "/logout")
 api.add_resource(
     EmailVerificationResource, "/verify-email", endpoint="emailverificationresource"
 )

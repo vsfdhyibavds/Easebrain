@@ -15,7 +15,7 @@ from utils.auth_helpers import require_admin
 class AdminStatsResource(Resource):
     """Get dashboard statistics"""
 
-    # @require_admin
+    @require_admin
     def get(self):
         try:
             # Total counts
@@ -52,7 +52,7 @@ class AdminStatsResource(Resource):
 class AdminReportsResource(Resource):
     """Get flagged content reports"""
 
-    # @require_admin
+    @require_admin
     def get(self):
         try:
             parser = reqparse.RequestParser()
@@ -98,7 +98,7 @@ class AdminReportsResource(Resource):
 class AdminActivityFeedResource(Resource):
     """Get recent admin activity"""
 
-    # @require_admin
+    @require_admin
     def get(self):
         try:
             parser = reqparse.RequestParser()
@@ -159,7 +159,7 @@ class AdminActivityFeedResource(Resource):
 class AdminAnalyticsResource(Resource):
     """Get analytics data for charts"""
 
-    # @require_admin
+    @require_admin
     def get(self):
         try:
             parser = reqparse.RequestParser()
@@ -202,7 +202,7 @@ class AdminAnalyticsResource(Resource):
 class AdminContentDistributionResource(Resource):
     """Get content distribution metrics"""
 
-    # @require_admin
+    @require_admin
     def get(self):
         try:
             community_posts = CommunityPost.query.count()
@@ -245,7 +245,7 @@ class AdminContentDistributionResource(Resource):
 class AdminUsersResource(Resource):
     """Get list of users with filtering"""
 
-    # @require_admin
+    @require_admin
     def get(self):
         try:
             parser = reqparse.RequestParser()

@@ -5,6 +5,7 @@ from models import User
 from extensions import db
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from .serializers import serialize_user
+from utils.auth_helpers import require_admin, user_is_admin
 
 # Parser for creating/updating a user
 user_parser = reqparse.RequestParser()
@@ -30,7 +31,15 @@ password_reset_parser.add_argument(
 
 
 class AvatarUploadResource(Resource):
+    @jwt_required()
     def post(self, user_id):
+        current_user_id = get_jwt_identity()
+        is_admin = user_is_admin(current_user_id)
+        
+        # Users can only upload their own avatar, admins can upload for anyone
+        if user_id != current_user_id and not is_admin:
+            return {"message": "Forbidden: You can only upload your own avatar"}, 403
+        
         user = User.query.get(user_id)
         if not user:
             return {"message": "User not found"}, 404
@@ -39,6 +48,18 @@ class AvatarUploadResource(Resource):
             return {"message": "No file uploaded"}, 400
 
         avatar = request.files["avatar"]
+        # Sanitize filename - prevent directory traversal
+        if "/" in avatar.filename or "\\" in avatar.filename:
+            return {"message": "Invalid filename"}, 400
+        
+        # Validate file size (max 5MB)
+        avatar.seek(0, 2)  # Seek to end
+        file_size = avatar.tell()
+        avatar.seek(0)  # Reset to beginning
+        
+        if file_size > 5 * 1024 * 1024:
+            return {"message": "File too large (max 5MB)"}, 400
+        
         filename = f"user_{user_id}_avatar.png"
         avatar_dir = os.path.join(os.getcwd(), "static", "avatars")
         os.makedirs(avatar_dir, exist_ok=True)
@@ -64,24 +85,40 @@ class PasswordResetResource(Resource):
 
 
 class UserResource(Resource):
+    @jwt_required()
     def get(self, user_id=None):
         try:
+            current_user_id = get_jwt_identity()
+            is_admin = user_is_admin(current_user_id)
+            
             if user_id:
+                # Users can only view their own profile, or admins can view anyone
+                if user_id != current_user_id and not is_admin:
+                    return {"error": "Forbidden: You can only view your own profile"}, 403
+                
                 user = User.query.filter_by(id=user_id, is_active=True).first()
                 if not user:
                     return {"error": "User not found"}, 404
                 return serialize_user(user), 200
 
+            # Email lookup restricted to admins only
             email = request.args.get("email")
             if email:
+                if not is_admin:
+                    return {"error": "Forbidden: Email lookup restricted to admins"}, 403
                 user = User.query.filter_by(email=email, is_active=True).first()
                 if not user:
                     return {"error": "User with that email not found"}, 404
                 return serialize_user(user), 200
 
+            # List users - restricted to admins only
+            if not is_admin:
+                return {"error": "Forbidden: User listing restricted to admins"}, 403
+            
             # Pagination
             page = request.args.get("page", default=1, type=int)
             per_page = request.args.get("per_page", default=10, type=int)
+            per_page = min(per_page, 100)  # Cap at 100 to prevent abuse
             pagination = User.query.filter_by(is_active=True).paginate(
                 page=page, per_page=per_page, error_out=False
             )
@@ -100,22 +137,19 @@ class UserResource(Resource):
             return {"error": str(e)}, 500
 
     def post(self):
-        args = user_parser.parse_args()
+        # User creation should go through the SignupResource endpoint
+        # This is a security measure to prevent direct user creation bypassing verification
+        return {"error": "User creation must be done through the /signup endpoint"}, 405
 
-        if User.query.filter_by(email=args["email"]).first():
-            return {"error": "User with this email already exists"}, 400
-
-        user = User(
-            email=args["email"],
-            password_hash=args["password_hash"],
-            first_name=args.get("first_name"),
-            last_name=args.get("last_name"),
-        )
-        db.session.add(user)
-        db.session.commit()
-        return serialize_user(user), 201
-
+    @jwt_required()
     def put(self, user_id):
+        current_user_id = get_jwt_identity()
+        is_admin = user_is_admin(current_user_id)
+        
+        # Users can only update their own profile, admins can update anyone
+        if user_id != current_user_id and not is_admin:
+            return {"error": "Forbidden: You can only update your own profile"}, 403
+        
         user = User.query.filter_by(id=user_id, is_active=True).first()
         if not user:
             return {"error": "User not found"}, 404
@@ -123,18 +157,32 @@ class UserResource(Resource):
         args = user_update_parser.parse_args()
 
         if args.get("email"):
+            # Prevent email changes (should be done through dedicated endpoint)
+            if not is_admin:
+                return {"error": "Email changes require admin assistance"}, 403
             user.email = args["email"]
-        if args.get("password_hash"):
-            user.password_hash = args["password_hash"]
+        
         if args.get("first_name"):
             user.first_name = args["first_name"]
         if args.get("last_name"):
             user.last_name = args["last_name"]
+        
+        # Prevent direct password_hash changes (should use password reset endpoint)
+        if args.get("password_hash"):
+            return {"error": "Use the password reset endpoint to change passwords"}, 400
 
         db.session.commit()
         return serialize_user(user), 200
 
+    @jwt_required()
     def delete(self, user_id):
+        current_user_id = get_jwt_identity()
+        is_admin = user_is_admin(current_user_id)
+        
+        # Users can only deactivate their own account, admins can deactivate anyone
+        if user_id != current_user_id and not is_admin:
+            return {"error": "Forbidden: You can only deactivate your own account"}, 403
+        
         user = User.query.filter_by(id=user_id, is_active=True).first()
         if not user:
             return {"error": "User not found or deactivated"}, 404
