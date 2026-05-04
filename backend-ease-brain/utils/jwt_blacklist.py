@@ -11,6 +11,7 @@ from flask_jwt_extended import get_jwt
 # Check for Redis availability
 try:
     import redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False

@@ -35,10 +35,23 @@ def init_security_headers(app):
         # SECURITY: Adjust these directives based on your application's needs
         csp_directives = {
             "default-src": ["'self'"],  # Default: only allow same-origin
-            "script-src": ["'self'", "'unsafe-inline'"],  # Allow scripts from same-origin and inline (adjust as needed)
-            "style-src": ["'self'", "'unsafe-inline'"],  # Allow styles from same-origin and inline
-            "img-src": ["'self'", "data:", "https:"],  # Allow images from same-origin, data URIs, and HTTPS
-            "font-src": ["'self'", "data:"],  # Allow fonts from same-origin and data URIs
+            "script-src": [
+                "'self'",
+                "'unsafe-inline'",
+            ],  # Allow scripts from same-origin and inline (adjust as needed)
+            "style-src": [
+                "'self'",
+                "'unsafe-inline'",
+            ],  # Allow styles from same-origin and inline
+            "img-src": [
+                "'self'",
+                "data:",
+                "https:",
+            ],  # Allow images from same-origin, data URIs, and HTTPS
+            "font-src": [
+                "'self'",
+                "data:",
+            ],  # Allow fonts from same-origin and data URIs
             "connect-src": ["'self'"],  # Allow XHR/WebSocket connections to same-origin
             "frame-ancestors": ["'none'"],  # Prevent embedding in frames
             "base-uri": ["'self'"],  # Restrict base URL
@@ -48,7 +61,11 @@ def init_security_headers(app):
         # Allow frontend domain in production
         frontend_url = os.environ.get("FRONTEND_URL", "")
         if frontend_url and os.environ.get("FLASK_ENV") == "production":
-            frontend_domain = frontend_url.replace("https://", "").replace("http://", "").split("/")[0]
+            frontend_domain = (
+                frontend_url.replace("https://", "")
+                .replace("http://", "")
+                .split("/")[0]
+            )
             csp_directives["default-src"] = ["'self'", frontend_domain]
             csp_directives["connect-src"] = ["'self'", frontend_domain]
 
@@ -69,7 +86,9 @@ def init_security_headers(app):
 
         # Cache control for sensitive endpoints
         if request.path.startswith("/api/"):
-            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Cache-Control"] = (
+                "no-store, no-cache, must-revalidate, max-age=0"
+            )
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
 

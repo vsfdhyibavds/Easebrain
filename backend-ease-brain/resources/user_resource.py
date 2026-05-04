@@ -35,11 +35,11 @@ class AvatarUploadResource(Resource):
     def post(self, user_id):
         current_user_id = get_jwt_identity()
         is_admin = user_is_admin(current_user_id)
-        
+
         # Users can only upload their own avatar, admins can upload for anyone
         if user_id != current_user_id and not is_admin:
             return {"message": "Forbidden: You can only upload your own avatar"}, 403
-        
+
         user = User.query.get(user_id)
         if not user:
             return {"message": "User not found"}, 404
@@ -51,15 +51,15 @@ class AvatarUploadResource(Resource):
         # Sanitize filename - prevent directory traversal
         if "/" in avatar.filename or "\\" in avatar.filename:
             return {"message": "Invalid filename"}, 400
-        
+
         # Validate file size (max 5MB)
         avatar.seek(0, 2)  # Seek to end
         file_size = avatar.tell()
         avatar.seek(0)  # Reset to beginning
-        
+
         if file_size > 5 * 1024 * 1024:
             return {"message": "File too large (max 5MB)"}, 400
-        
+
         filename = f"user_{user_id}_avatar.png"
         avatar_dir = os.path.join(os.getcwd(), "static", "avatars")
         os.makedirs(avatar_dir, exist_ok=True)
@@ -90,12 +90,14 @@ class UserResource(Resource):
         try:
             current_user_id = get_jwt_identity()
             is_admin = user_is_admin(current_user_id)
-            
+
             if user_id:
                 # Users can only view their own profile, or admins can view anyone
                 if user_id != current_user_id and not is_admin:
-                    return {"error": "Forbidden: You can only view your own profile"}, 403
-                
+                    return {
+                        "error": "Forbidden: You can only view your own profile"
+                    }, 403
+
                 user = User.query.filter_by(id=user_id, is_active=True).first()
                 if not user:
                     return {"error": "User not found"}, 404
@@ -105,7 +107,9 @@ class UserResource(Resource):
             email = request.args.get("email")
             if email:
                 if not is_admin:
-                    return {"error": "Forbidden: Email lookup restricted to admins"}, 403
+                    return {
+                        "error": "Forbidden: Email lookup restricted to admins"
+                    }, 403
                 user = User.query.filter_by(email=email, is_active=True).first()
                 if not user:
                     return {"error": "User with that email not found"}, 404
@@ -114,7 +118,7 @@ class UserResource(Resource):
             # List users - restricted to admins only
             if not is_admin:
                 return {"error": "Forbidden: User listing restricted to admins"}, 403
-            
+
             # Pagination
             page = request.args.get("page", default=1, type=int)
             per_page = request.args.get("per_page", default=10, type=int)
@@ -145,11 +149,11 @@ class UserResource(Resource):
     def put(self, user_id):
         current_user_id = get_jwt_identity()
         is_admin = user_is_admin(current_user_id)
-        
+
         # Users can only update their own profile, admins can update anyone
         if user_id != current_user_id and not is_admin:
             return {"error": "Forbidden: You can only update your own profile"}, 403
-        
+
         user = User.query.filter_by(id=user_id, is_active=True).first()
         if not user:
             return {"error": "User not found"}, 404
@@ -161,12 +165,12 @@ class UserResource(Resource):
             if not is_admin:
                 return {"error": "Email changes require admin assistance"}, 403
             user.email = args["email"]
-        
+
         if args.get("first_name"):
             user.first_name = args["first_name"]
         if args.get("last_name"):
             user.last_name = args["last_name"]
-        
+
         # Prevent direct password_hash changes (should use password reset endpoint)
         if args.get("password_hash"):
             return {"error": "Use the password reset endpoint to change passwords"}, 400
@@ -178,11 +182,11 @@ class UserResource(Resource):
     def delete(self, user_id):
         current_user_id = get_jwt_identity()
         is_admin = user_is_admin(current_user_id)
-        
+
         # Users can only deactivate their own account, admins can deactivate anyone
         if user_id != current_user_id and not is_admin:
             return {"error": "Forbidden: You can only deactivate your own account"}, 403
-        
+
         user = User.query.filter_by(id=user_id, is_active=True).first()
         if not user:
             return {"error": "User not found or deactivated"}, 404
