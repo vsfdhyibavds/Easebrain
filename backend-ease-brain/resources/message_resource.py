@@ -1,7 +1,8 @@
 from flask_restful import Resource, reqparse
-from models import Message
+from models import Message, Conversation, User
 from extensions import db
-from flask import request
+from flask import request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from .serializers import serialize_model
 from utils.danger_detector import get_detector
 from utils.llm_danger_detector import get_llm_detector
@@ -28,9 +29,20 @@ class MessageResource(Resource):
     )
     parser.add_argument("is_read", type=bool, required=False)
 
+    @jwt_required()
     def get(self, message_id=None):
+        current_user_id = get_jwt_identity()
+        if not current_user_id:
+            return {"error": "Unauthorized"}, 401
+        
         if message_id:
             msg = Message.query.get_or_404(message_id)
+            
+            # SECURITY: Verify user is part of this message's conversation
+            conversation = Conversation.query.get(msg.conversation_id)
+            if not conversation or (conversation.user1_id != current_user_id and conversation.user2_id != current_user_id):
+                return {"error": "Forbidden: You cannot access this message"}, 403
+            
             return serialize_model(
                 msg,
                 [
@@ -51,8 +63,13 @@ class MessageResource(Resource):
 
         query = Message.query
 
+        # SECURITY: If filtering by conversation, verify user is part of it
         if conversation_id:
+            conversation = Conversation.query.get(conversation_id)
+            if not conversation or (conversation.user1_id != current_user_id and conversation.user2_id != current_user_id):
+                return {"error": "Forbidden: You cannot access messages in this conversation"}, 403
             query = query.filter_by(conversation_id=conversation_id)
+        
         if sender_id:
             query = query.filter_by(sender_id=sender_id)
         if receiver_id:
@@ -76,8 +93,24 @@ class MessageResource(Resource):
             for m in messages
         ], 200
 
+    @jwt_required()
     def post(self):
+        current_user_id = get_jwt_identity()
         data = self.parser.parse_args()
+        
+        # SECURITY: Verify sender is the authenticated user
+        if data["sender_id"] != current_user_id:
+            return {"error": "Forbidden: You cannot send messages as another user"}, 403
+        
+        # SECURITY: Verify user is part of the conversation
+        conversation = Conversation.query.get(data["conversation_id"])
+        if not conversation or (conversation.user1_id != current_user_id and conversation.user2_id != current_user_id):
+            return {"error": "Forbidden: You are not part of this conversation"}, 403
+        
+        # SECURITY: Verify receiver is the other participant in the conversation
+        expected_receiver = conversation.user2_id if conversation.user1_id == current_user_id else conversation.user1_id
+        if data["receiver_id"] != expected_receiver:
+            return {"error": "Forbidden: Invalid receiver for this conversation"}, 403
 
         # Run rule-based danger detection on message content
         detector = get_detector(verbose=False)
@@ -188,13 +221,26 @@ class MessageResource(Resource):
 
         return response, 201
 
+    @jwt_required()
     def put(self, message_id):
+        current_user_id = get_jwt_identity()
         message = Message.query.get_or_404(message_id)
+        
+        # SECURITY: Only sender or receiver can update a message
+        if message.sender_id != current_user_id and message.receiver_id != current_user_id:
+            return {"error": "Forbidden: You cannot update this message"}, 403
+        
+        # SECURITY: Only sender can edit content; receiver can only mark as read
         data = request.get_json()
-
+        
         if "content" in data:
+            if message.sender_id != current_user_id:
+                return {"error": "Forbidden: Only sender can edit message content"}, 403
             message.content = data["content"]
+        
         if "is_read" in data:
+            if message.receiver_id != current_user_id:
+                return {"error": "Forbidden: Only receiver can mark messages as read"}, 403
             message.is_read = data["is_read"]
 
         db.session.commit()
@@ -212,8 +258,15 @@ class MessageResource(Resource):
             ],
         ), 200
 
+    @jwt_required()
     def delete(self, message_id):
+        current_user_id = get_jwt_identity()
         message = Message.query.get_or_404(message_id)
+        
+        # SECURITY: Only sender can delete a message
+        if message.sender_id != current_user_id:
+            return {"error": "Forbidden: Only sender can delete this message"}, 403
+        
         db.session.delete(message)
         db.session.commit()
         return {"message": f"Message {message_id} deleted."}, 204

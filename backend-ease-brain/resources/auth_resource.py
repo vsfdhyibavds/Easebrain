@@ -14,6 +14,7 @@ from utils.send_email import send_email_notification
 from utils.auth_helpers import get_user_roles, get_user_role_types
 from utils.audit_logger import log_auth_event
 from utils.jwt_blacklist import revoke_token
+from utils.rate_limiter import limiter
 from flask import url_for, request, current_app
 from datetime import datetime
 import secrets
@@ -23,6 +24,7 @@ from datetime import timedelta
 class PasswordResetResource(Resource):
     """Handle forgot password request - sends reset email"""
 
+    @limiter.limit("3 per minute, 10 per hour")
     def post(self):
         """Send password reset email to user"""
         data = request.get_json(silent=True) or {}
@@ -110,6 +112,7 @@ Thanks!"""
 class PasswordResetConfirmResource(Resource):
     """Handle password reset confirmation with token"""
 
+    @limiter.limit("5 per minute, 20 per hour")
     def post(self):
         """Confirm password reset with token (sent in POST body, not URL)"""
         data = request.get_json(silent=True) or {}
@@ -196,6 +199,7 @@ class SignupResource(Resource):
         "role_id", type=int, help="Role ID for the user", location="json"
     )
 
+    @limiter.limit("3 per minute, 10 per hour")
     def post(self):
         # Log raw incoming request for debugging differences between curl and browser requests
         try:
@@ -420,6 +424,7 @@ class LoginResource(Resource):
         "password", required=True, type=str, help="Password is required"
     )
 
+    @limiter.limit("5 per minute, 20 per hour")
     def post(self):
         from flask import make_response
 
@@ -608,6 +613,7 @@ class LogoutResource(Resource):
     """Handle user logout and token revocation"""
 
     @jwt_required()
+    @limiter.limit("20 per minute")
     def post(self):
         """Logout user by revoking their JWT token and clearing cookie"""
         from flask import make_response
