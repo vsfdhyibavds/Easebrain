@@ -4,6 +4,7 @@ from extensions import db
 from models import Story, StoryComment
 from datetime import datetime
 import logging
+from utils.auth_helpers import user_is_admin
 
 story_bp = Blueprint("stories", __name__, url_prefix="/stories")
 logger = logging.getLogger(__name__)
@@ -137,9 +138,17 @@ def approve_story(story_id):
     """Approve a story (admin/moderator only)"""
     try:
         user_id = get_jwt_identity()
-        story = Story.query.get_or_404(story_id)
 
-        # TODO: Check if user is admin/moderator
+        # SECURITY: Only admins can approve stories
+        if not user_is_admin(user_id):
+            logger.warning(
+                f"Unauthorized approval attempt by user {user_id} for story {story_id}"
+            )
+            return jsonify(
+                {"error": "Forbidden: Admin role required to approve stories"}
+            ), 403
+
+        story = Story.query.get_or_404(story_id)
 
         story.is_approved = True
         story.approved_by = user_id
@@ -148,7 +157,7 @@ def approve_story(story_id):
 
         db.session.commit()
 
-        logger.info(f"Story {story_id} approved by user {user_id}")
+        logger.info(f"Story {story_id} approved by admin {user_id}")
 
         return jsonify({"message": "Story approved", "story": story.to_dict()}), 200
     except Exception as e:

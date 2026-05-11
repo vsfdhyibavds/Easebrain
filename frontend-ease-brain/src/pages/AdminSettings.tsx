@@ -1,8 +1,9 @@
-import { FC, useState, ChangeEvent, useCallback } from "react";
+import { FC, useState, ChangeEvent, useCallback, useEffect } from "react";
 import { FaCog, FaSave, FaRedo } from "react-icons/fa";
 import { AdminBreadcrumb } from "../components/admin";
 import type { BreadcrumbItem } from "../components/admin/AdminBreadcrumb";
 import { useDarkMode } from "../context/DarkModeContext";
+import adminSettingsApi from "../services/api/adminSettingsApi";
 
 interface AdminSettings {
   dashboardRefreshRate: number;
@@ -28,8 +29,25 @@ const AdminSettings: FC = () => {
 
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showPasswordMessage, setShowPasswordMessage] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await adminSettingsApi.getSettings();
+        if (response.data) {
+          setSettings(response.data);
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const handleChange = useCallback((key: keyof AdminSettings, value: unknown) => {
     setSettings((prev) => ({
@@ -45,18 +63,25 @@ const AdminSettings: FC = () => {
   }, [setDarkMode]);
 
   const handleSaveSettings = useCallback(async () => {
+    setIsLoading(true);
+    setSaveError(null);
     try {
-      // TODO: Connect to API to save settings
-      // await apiClient.post("/admin/settings", settings);
-
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setSaveSuccess(true);
-      setUnsavedChanges(false);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      const response = await adminSettingsApi.saveSettings(settings);
+      if (response.data) {
+        setSaveSuccess(true);
+        setUnsavedChanges(false);
+        setTimeout(() => setSaveSuccess(false), 3000);
+      } else {
+        setSaveError(response.error || "Failed to save settings");
+      }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save settings";
+      setSaveError(errorMessage);
       console.error("Failed to save settings:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [settings]);
 
   const handleReset = useCallback(() => {
     setSettings({
@@ -112,6 +137,13 @@ const AdminSettings: FC = () => {
       {saveSuccess && (
         <div className="rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 p-4 text-green-700 dark:text-green-400" role="status" aria-live="polite">
           ✓ Settings saved successfully
+        </div>
+      )}
+
+      {/* Error Message */}
+      {saveError && (
+        <div className="rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 p-4 text-red-700 dark:text-red-400" role="alert" aria-live="polite">
+          ✗ {saveError}
         </div>
       )}
 
@@ -287,16 +319,17 @@ const AdminSettings: FC = () => {
       <div className="flex gap-3">
         <button
           onClick={handleSaveSettings}
-          disabled={!unsavedChanges}
+          disabled={!unsavedChanges || isLoading}
           aria-label={unsavedChanges ? "Save your settings changes" : "No unsaved changes to save"}
           className="flex items-center gap-2 rounded-lg bg-teal-600 dark:bg-teal-700 px-6 py-2 text-white hover:bg-teal-700 dark:hover:bg-teal-600 transition disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
         >
-          <FaSave aria-hidden="true" /> Save Settings
+          <FaSave aria-hidden="true" /> {isLoading ? "Saving..." : "Save Settings"}
         </button>
         <button
           onClick={handleReset}
+          disabled={isLoading}
           aria-label="Reset all settings to their default values"
-          className="flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-6 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition min-h-[44px]"
+          className="flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 px-6 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
         >
           <FaRedo aria-hidden="true" /> Reset to Defaults
         </button>

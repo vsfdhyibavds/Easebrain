@@ -1,5 +1,5 @@
 from flask_restful import Resource, reqparse
-from flask import jsonify
+from flask import jsonify, request
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from models.user import User
@@ -8,8 +8,13 @@ from models.community import CommunityPost
 from models.message import Message
 from models.reminder import Reminder
 from models.session import SessionToken
+from models.settings import UserSettings
 from extensions import db
 from utils.auth_helpers import require_admin
+from flask_jwt_extended import jwt_required, get_jwt_identity
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AdminStatsResource(Resource):
@@ -288,3 +293,129 @@ class AdminUsersResource(Resource):
             ), 200
         except Exception as e:
             return jsonify({"message": f"Error fetching users: {str(e)}"}), 500
+
+
+class AdminSettingsResource(Resource):
+    """Manage admin dashboard settings"""
+
+    @jwt_required()
+    def get(self):
+        """Get admin settings for current user"""
+        try:
+            user_id = get_jwt_identity()
+            settings = UserSettings.query.filter_by(user_id=user_id).first()
+
+            if not settings:
+                # Return default settings if not found
+                return jsonify(
+                    {
+                        "success": True,
+                        "data": {
+                            "dashboardRefreshRate": 30,
+                            "notificationsEnabled": True,
+                            "emailAlerts": True,
+                            "darkMode": False,
+                            "autoLogoutMinutes": 60,
+                            "twoFactorEnabled": True,
+                            "timeFormat": "24h",
+                        },
+                    }
+                ), 200
+
+            settings_data = {
+                "dashboardRefreshRate": getattr(settings, "dashboard_refresh_rate", 30),
+                "notificationsEnabled": settings.push_notifications,
+                "emailAlerts": settings.email_notifications,
+                "darkMode": settings.theme == "dark",
+                "autoLogoutMinutes": getattr(settings, "auto_logout_minutes", 60),
+                "twoFactorEnabled": getattr(settings, "two_factor_enabled", True),
+                "timeFormat": getattr(settings, "time_format", "24h"),
+            }
+
+            return jsonify({"success": True, "data": settings_data}), 200
+        except Exception as e:
+            logger.error(f"Error fetching admin settings: {str(e)}")
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Failed to fetch settings",
+                    }
+                ),
+                500,
+            )
+
+    @jwt_required()
+    def post(self):
+        """Save admin settings for current user"""
+        try:
+            user_id = get_jwt_identity()
+            data = request.get_json()
+
+            if not data:
+                return (
+                    jsonify({"success": False, "error": "No settings provided"}),
+                    400,
+                )
+
+            # Get or create settings
+            settings = UserSettings.query.filter_by(user_id=user_id).first()
+
+            if not settings:
+                settings = UserSettings(user_id=user_id)
+                db.session.add(settings)
+
+            # Update settings from request
+            if "notificationsEnabled" in data:
+                settings.push_notifications = data["notificationsEnabled"]
+            if "emailAlerts" in data:
+                settings.email_notifications = data["emailAlerts"]
+            if "darkMode" in data:
+                settings.theme = "dark" if data["darkMode"] else "light"
+
+            # Store additional settings as custom attributes (requires model update)
+            if "dashboardRefreshRate" in data:
+                settings.dashboard_refresh_rate = data["dashboardRefreshRate"]
+            if "autoLogoutMinutes" in data:
+                settings.auto_logout_minutes = data["autoLogoutMinutes"]
+            if "twoFactorEnabled" in data:
+                settings.two_factor_enabled = data["twoFactorEnabled"]
+            if "timeFormat" in data:
+                settings.time_format = data["timeFormat"]
+
+            db.session.commit()
+
+            logger.info(f"Admin settings saved for user {user_id}")
+
+            settings_data = {
+                "dashboardRefreshRate": getattr(settings, "dashboard_refresh_rate", 30),
+                "notificationsEnabled": settings.push_notifications,
+                "emailAlerts": settings.email_notifications,
+                "darkMode": settings.theme == "dark",
+                "autoLogoutMinutes": getattr(settings, "auto_logout_minutes", 60),
+                "twoFactorEnabled": getattr(settings, "two_factor_enabled", True),
+                "timeFormat": getattr(settings, "time_format", "24h"),
+            }
+
+            return (
+                jsonify(
+                    {
+                        "success": True,
+                        "message": "Settings saved successfully",
+                        "data": settings_data,
+                    }
+                ),
+                200,
+            )
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error saving admin settings: {str(e)}")
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": "Failed to save settings",
+                    }
+                ),
+                500,
+            )

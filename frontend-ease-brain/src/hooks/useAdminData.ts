@@ -1,5 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Dependent, Task } from "../types/admin";
+import dependentsApi from "../services/api/dependentsApi";
+import tasksApi from "../services/api/tasksApi";
 
 interface UseAdminDataOptions {
   initialPage?: number;
@@ -27,21 +29,31 @@ export const useAdminDependents = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(initialPage);
+  const [totalPages, setTotalPages] = useState(0);
 
-  // Mock fetch - replace with actual API call
+  // Fetch dependents from API
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await dependentsApi.list({ page, pageSize });
-      // setData(response.data);
+      const response = await dependentsApi.list({ page, limit: pageSize });
+      if (response.data) {
+        setData(response.data.items);
+        setTotalPages(response.data.totalPages);
+      } else {
+        setError(response.error || "Failed to fetch dependents");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch dependents");
     } finally {
       setLoading(false);
     }
   }, [page, pageSize]);
+
+  // Fetch dependents whenever page changes
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const addItem = useCallback((item: Dependent) => {
     setData((prev) => [item, ...prev]);
@@ -64,7 +76,7 @@ export const useAdminDependents = (
     loading,
     error,
     page,
-    totalPages: Math.ceil(data.length / pageSize),
+    totalPages,
     setPage,
     refresh: fetchData,
     addItem,
@@ -81,21 +93,31 @@ export const useAdminTasks = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(initialPage);
+  const [totalPages, setTotalPages] = useState(0);
 
-  // Mock fetch - replace with actual API call
+  // Fetch tasks from API
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await tasksApi.list({ page, pageSize });
-      // setData(response.data);
+      const response = await tasksApi.list({ page, limit: pageSize });
+      if (response.data) {
+        setData(response.data.items);
+        setTotalPages(response.data.totalPages);
+      } else {
+        setError(response.error || "Failed to fetch tasks");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch tasks");
     } finally {
       setLoading(false);
     }
   }, [page, pageSize]);
+
+  // Fetch tasks whenever page changes
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const addItem = useCallback((item: Task) => {
     setData((prev) => [item, ...prev]);
@@ -118,7 +140,7 @@ export const useAdminTasks = (
     loading,
     error,
     page,
-    totalPages: Math.ceil(data.length / pageSize),
+    totalPages,
     setPage,
     refresh: fetchData,
     addItem,

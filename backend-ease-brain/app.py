@@ -55,6 +55,7 @@ from resources.admin_resource import (
     AdminAnalyticsResource,
     AdminContentDistributionResource,
     AdminUsersResource,
+    AdminSettingsResource,
 )
 
 from resources.organization_login_resource import (
@@ -96,11 +97,13 @@ if not secret_key:
     if os.environ.get("FLASK_ENV") == "production":
         raise ValueError(
             "❌ CRITICAL: SECRET_KEY environment variable must be set in production. "
-            "Generate with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            'Generate with: python -c "import secrets; print(secrets.token_hex(32))"'
         )
     # Development: use a temporary key (print warning)
     secret_key = "dev-only-not-secure-change-immediately"
-    app.logger.warning("⚠️  WARNING: Using development SECRET_KEY. Set SECRET_KEY env var for production.")
+    app.logger.warning(
+        "⚠️  WARNING: Using development SECRET_KEY. Set SECRET_KEY env var for production."
+    )
 
 app.config["SECRET_KEY"] = secret_key
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"
@@ -384,6 +387,7 @@ api.add_resource(AdminActivityFeedResource, "/admin/activity")
 api.add_resource(AdminAnalyticsResource, "/admin/analytics")
 api.add_resource(AdminContentDistributionResource, "/admin/content-distribution")
 api.add_resource(AdminUsersResource, "/admin/users")
+api.add_resource(AdminSettingsResource, "/admin/settings")
 api.add_resource(OrganizationLoginResource, "/organization/login")
 api.add_resource(OrganizationDashboardResource, "/organization/dashboard")
 api.add_resource(PasswordResetResource, "/forgot-password")
