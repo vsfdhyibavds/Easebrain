@@ -456,12 +456,366 @@ flask run --debug --port 5500
 
 See README files for detailed deployment instructions.
 
+## 🏗️ Architecture & System Design
+
+### System Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         FRONTEND (React/Vite)                        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
+│  │   Admin     │  │  Caregiver  │  │   Patient   │  │  Auth       │ │
+│  │  Dashboard  │  │  Dashboard  │  │  Dashboard  │  │  Context    │ │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘ │
+│         │                │                │                │        │
+│         └────────────────┴────────────────┴────────────────┘        │
+│                                  │                                   │
+│                          Axios API Services                          │
+└──────────────────────────────────┼───────────────────────────────────┘
+                                   │ JWT + HTTP/REST
+┌──────────────────────────────────┼───────────────────────────────────┐
+│                         BACKEND (Flask)                              │
+│                                  │                                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
+│  │    Auth     │  │   Danger    │  │   User      │  │  Moderation │ │
+│  │   Routes    │  │  Detector   │  │  Resources  │  │  Resources  │ │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘ │
+│         │                │                │                │        │
+│         └────────────────┴────────────────┴────────────────┘        │
+│                                  │                                   │
+│                     SQLAlchemy ORM + JWT Auth                        │
+└──────────────────────────────────┼───────────────────────────────────┘
+                                   │
+┌──────────────────────────────────┼───────────────────────────────────┐
+│                         DATABASE (PostgreSQL)                        │
+│                                  │                                   │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
+│  │    User     │  │   Message   │  │  Community  │  │   Safety    │ │
+│  │    Model    │  │    Model    │  │    Model    │  │    Plan     │ │
+│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Authentication & Authorization Flow
+
+```
+1. User Login (SignIn.tsx)
+   │
+   ├─► POST /api/auth/login (email + password)
+   │
+   ├─► Backend validates credentials (bcrypt)
+   │
+   ├─► Backend generates JWT token (includes user ID + role)
+   │
+   ├─► Frontend receives JWT + user info
+   │
+   ├─► Frontend stores JWT in localStorage
+   │
+   └─► All subsequent API calls include JWT in Authorization header
+
+2. Protected Route Access
+   │
+   ├─► Frontend checks JWT + user role
+   │
+   ├─► Route guard verifies role permissions
+   │
+   └─► Render appropriate dashboard (Admin/Caregiver/Patient)
+```
+
+### Danger Detection Workflow
+
+```
+User sends message
+        │
+        ▼
+┌───────────────────┐
+│ Rule-Based Check  │─── No Match ──► Message posted normally
+│ (29 regex         │
+│  patterns)        │
+└────────┬──────────┘
+         │ Match Found
+         ▼
+┌───────────────────┐
+│ Calculate Severity│
+│ Score (0.0-1.0)   │
+└────────┬──────────┘
+         │
+         ├── Score < 0.4 ──► Log for monitoring
+         │
+         ├── Score 0.4-0.6 ──► Flag for review
+         │
+         └── Score > 0.6 ──► CRITICAL ALERT
+                           │
+                           ▼
+                    ┌──────────────┐
+                    │ Optional LLM │
+                    │ Analysis     │
+                    └──────┬───────┘
+                           │
+                           ▼
+                    Notify caregiver/admin
+                    Add to moderation queue
+```
+
+### Multi-Role Access Control
+
+| Role | Permissions | Dashboard Access | Key Features |
+|------|-------------|------------------|--------------|
+| **Patient/User** | View own data, send messages, track health | Patient Dashboard | Mood tracking, safety plans, messaging |
+| **Caregiver** | Manage dependents, view care notes, receive alerts | Caregiver Dashboard | Dependent management, activity tracking |
+| **Admin** | Full system access, user management, moderation | Admin Dashboard | System stats, user management, moderation queue |
+| **Organization** | Limited admin access for organizational users | Organization Dashboard | Organizational user management |
+
+## 🛠️ Development Workflow
+
+### Quick Local Setup (Recommended)
+
+Use the automated setup script for a complete development environment:
+
+```bash
+# Clone repository
+git clone git@github.com:vsfdhyibavds/Easebrain.git
+cd easebrain
+
+# Run automated setup (installs all dependencies, creates .env files)
+bash setup-dev.sh
+
+# Follow the prompts to configure environment variables
+```
+
+Then start development servers in separate terminals:
+
+```bash
+# Terminal 1 - Backend
+cd backend-ease-brain
+source ../.venv/bin/activate  # Activate Python virtual environment
+flask db upgrade               # Run database migrations
+python seed_roles.py           # Seed initial roles
+python app.py                  # Start backend on port 5500
+
+# Terminal 2 - Frontend
+cd frontend-ease-brain
+npm run dev                    # Start frontend on port 5173
+```
+
+### Manual Setup (Alternative)
+
+#### Backend Setup
+
+```bash
+cd backend-ease-brain
+
+# Create and activate Python virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create .env file (copy from .env.render.example and modify)
+cp ../.env.render.example .env
+# Edit .env with your local settings
+
+# Initialize database
+flask db upgrade
+
+# Seed roles (required for role-based access)
+python seed_roles.py
+
+# Start development server
+python app.py  # Runs on http://localhost:5500
+```
+
+#### Frontend Setup
+
+```bash
+cd frontend-ease-brain
+
+# Install dependencies
+npm install
+
+# Create .env file
+echo "VITE_API_BASE_URL=http://localhost:5500/api" > .env
+
+# Start development server
+npm run dev  # Runs on http://localhost:5173
+```
+
+### Common Development Tasks
+
+#### Adding a New API Endpoint
+
+1. **Create database model** (if needed) in `backend-ease-brain/models/`:
+```python
+from extensions import db
+
+class MyModel(db.Model):
+    __tablename__ = 'my_models'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+```
+
+2. **Create resource** in `backend-ease-brain/resources/`:
+```python
+from flask_restful import Resource
+from flask_jwt_extended import jwt_required
+
+class MyResource(Resource):
+    @jwt_required()
+    def get(self):
+        return {'data': []}, 200
+```
+
+3. **Register endpoint** in `backend-ease-brain/app.py`:
+```python
+from resources.my_resource import MyResource
+api.add_resource(MyResource, '/api/my-endpoint')
+```
+
+4. **Test endpoint**:
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" http://localhost:5500/api/my-endpoint
+```
+
+#### Adding a New React Component
+
+1. **Create component file** in appropriate directory:
+```bash
+touch frontend-ease-brain/src/components/my-component/MyComponent.jsx
+```
+
+2. **Component structure**:
+```jsx
+import React from 'react';
+import { useApi } from '../hooks/useApi';
+
+const MyComponent = () => {
+    const { data, loading, error } = useApi('/api/my-endpoint');
+
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>Error: {error.message}</div>;
+
+    return <div className="my-component">{/* JSX */}</div>;
+};
+
+export default MyComponent;
+```
+
+#### Database Migrations
+
+```bash
+# After modifying models, create migration
+cd backend-ease-brain
+flask db migrate -m "Description of changes"
+
+# Review the generated migration file, then apply
+flask db upgrade
+
+# To rollback (if needed)
+flask db downgrade
+```
+
+#### Running Tests
+
+```bash
+# Backend tests
+cd backend-ease-brain
+python -m pytest                    # Run all tests
+python -m pytest --cov=.           # With coverage report
+
+# Frontend tests
+cd frontend-ease-brain
+npm test                           # Run tests
+npm test -- --coverage             # With coverage
+```
+
+### Debugging Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| "Failed to load roles" | Run `python seed_roles.py` in backend directory |
+| CORS errors | Check backend CORS configuration in `app.py` |
+| Database connection errors | Verify `DATABASE_URL` in `.env`, ensure PostgreSQL running |
+| Port already in use | Kill process: `lsof -ti:5500 \| xargs kill -9` |
+
+### Code Style Guidelines
+
+#### Python (Backend)
+
+- Follow PEP 8 style guide
+- Use type hints for function signatures
+- Write docstrings for complex functions
+- Keep functions focused and small (< 50 lines preferred)
+
+#### JavaScript/TypeScript (Frontend)
+
+- Use functional components with hooks
+- Prefer TypeScript for new components
+- Use ESLint for code quality
+- Keep components focused (single responsibility)
+
+### Security Considerations for Contributors
+
+⚠️ **Critical Security Rules**:
+
+1. **Never commit secrets**: API keys, database passwords, JWT secrets must stay in `.env` files
+2. **Validate all input**: Use validation schemas (Zod on frontend, manual validation on backend)
+3. **Use parameterized queries**: SQLAlchemy ORM prevents SQL injection
+4. **Implement proper authorization**: Check user roles and ownership for all protected endpoints
+5. **Sanitize user content**: Prevent XSS in messages and posts
+6. **Use HTTPS in production**: All production deployments must use SSL/TLS
+
+### Using the AI Agent
+
+This repository includes a specialized AI agent (`EASEBRAIN.agent.md`) to help with development:
+
+```bash
+# The agent is automatically activated in VS Code Copilot Chat
+# when working with Easebrain files
+
+# Example prompts:
+# - "Explain how the danger detection system works"
+# - "Create an API endpoint for mood tracking"
+# - "Review this code for security vulnerabilities"
+```
+
 ## 🤝 Contributing
 
-1. Create feature branch: `git checkout -b feature/amazing-feature`
-2. Make changes and commit: `git commit -m 'Add amazing feature'`
-3. Push to branch: `git push origin feature/amazing-feature`
-4. Open Pull Request
+We welcome contributions! Please follow these steps:
+
+1. **Fork the repository** and create your branch from `main`
+2. **Set up development environment** using `setup-dev.sh` (see Development Workflow above)
+3. **Make your changes** following our code style guidelines
+4. **Add tests** for new features (backend: pytest, frontend: Vitest)
+5. **Ensure all tests pass** before submitting
+6. **Update documentation** if your changes affect functionality
+7. **Create a pull request** with a clear description of changes
+
+### Pull Request Process
+
+1. **Branch naming**: Use descriptive names like `feature/add-mood-tracking` or `fix/cors-issues`
+2. **Commit messages**: Follow conventional commits format:
+   - `feat: add new feature`
+   - `fix: resolve bug`
+   - `docs: update documentation`
+   - `refactor: code improvements`
+3. **Testing**: Ensure all existing tests pass and add new tests for your changes
+4. **Code review**: Address review feedback promptly
+5. **Squash commits** if you have multiple small commits for the same change
+
+### What to Work On
+
+Check our [GitHub Issues](https://github.com/vsfdhyibavds/Easebrain/issues) for:
+- Good first issues (labeled `good first issue`)
+- Features in the roadmap (see Project Roadmap section)
+- Bug fixes and improvements
+
+### Getting Help
+
+- **Documentation**: Check README files in `backend-ease-brain/` and `frontend-ease-brain/`
+- **AI Agent**: Use the Easebrain AI agent in VS Code Copilot Chat
+- **Existing code**: Study similar implementations in the codebase
+- **Issues**: Ask questions in GitHub Issues or discussions
 
 ## 📞 Support
 
