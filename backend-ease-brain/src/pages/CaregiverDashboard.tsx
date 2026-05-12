@@ -741,6 +741,7 @@ function CaregiverDashboard() {
               );
             })}
           </div>
+          )}
 
           {/* Dependents Summary */}
           {dependents.length > 0 && (
@@ -828,7 +829,6 @@ function CaregiverDashboard() {
             </div>
           )}
         </div>
-        )}
       )}
 
       {/* Tab Content - Dependents */}
@@ -1082,6 +1082,7 @@ function CaregiverDashboard() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Detailed Vital Signs by Dependent */}
           <div className="space-y-6">
@@ -1139,7 +1140,6 @@ function CaregiverDashboard() {
               </div>
             ))}
           </div>
-          )}
         </div>
       )}
 

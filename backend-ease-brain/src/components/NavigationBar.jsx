@@ -53,7 +53,11 @@ export default function NavigationBar() {
               />
 
               <span className="text-white font-semibold hidden sm:inline">
-                {user.name}
+                {user.first_name && user.last_name
+                  ? `${user.first_name} ${user.last_name}`
+                  : user.username
+                  ? user.username
+                  : "User"}
               </span>
             </div>
             <button
