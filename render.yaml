@@ -7,13 +7,15 @@ services:
     region: oregon
     plan: free
     buildCommand: pip install -r requirements.txt
-    preDeployCommand: python seed_roles.py
-    startCommand: gunicorn -c gunicorn_config.py app:app
+    preDeployCommand: flask db upgrade && python seed_roles.py
+    startCommand: ./startup.sh
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
       - key: FLASK_APP
         value: app.py
+      - key: FLASK_ENV
+        value: production
       - key: DATABASE_URL
         fromDatabase:
           name: easebrain-db
@@ -33,6 +35,7 @@ services:
       - key: WEB_CONCURRENCY
         value: "2"
     healthCheckPath: /api/health
+
   # React Frontend (Static Site)
   - type: web
     name: easebrain-frontend
@@ -43,19 +46,7 @@ services:
     envVars:
       - key: VITE_BASE_URL
         value: https://easebrain-backend.onrender.com/api
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /index.html
-        name: Cache-Control
-        value: "public, max-age=0, must-revalidate"
-      - path: /assets/*
-        name: Cache-Control
-        value: "public, max-age=31536000, immutable"
+
 databases:
   - name: easebrain-db
     databaseName: easebrain
