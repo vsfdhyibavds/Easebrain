@@ -1,5 +1,5 @@
 from flask_restful import Resource, reqparse
-from flask import jsonify, request
+from flask import request
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from models.user import User
@@ -57,16 +57,14 @@ class AdminStatsResource(Resource):
                 SessionToken.expires_at > datetime.utcnow()
             ).count()
 
-            return jsonify(
-                {
-                    "total_users": total_users,
-                    "total_caregivers": total_caregivers,
-                    "flagged_posts": total_flagged_posts,
-                    "active_sessions": active_sessions,
-                }
-            ), 200
+            return {
+                "total_users": total_users,
+                "total_caregivers": total_caregivers,
+                "flagged_posts": total_flagged_posts,
+                "active_sessions": active_sessions,
+            }, 200
         except Exception as e:
-            return jsonify({"message": f"Error fetching stats: {str(e)}"}), 500
+            return {"message": f"Error fetching stats: {str(e)}"}, 500
 
 
 class AdminReportsResource(Resource):
@@ -112,9 +110,9 @@ class AdminReportsResource(Resource):
                     }
                 )
 
-            return jsonify(result), 200
+            return result, 200
         except Exception as e:
-            return jsonify({"message": f"Error fetching reports: {str(e)}"}), 500
+            return {"message": f"Error fetching reports: {str(e)}"}, 500
 
 
 class AdminActivityFeedResource(Resource):
@@ -151,9 +149,9 @@ class AdminActivityFeedResource(Resource):
 
             # Sort by timestamp descending
             activity.sort(key=lambda x: x["timestamp"], reverse=True)
-            return jsonify(activity[: args["limit"]]), 200
+            return activity[: args["limit"]], 200
         except Exception as e:
-            return jsonify({"message": f"Error fetching activity: {str(e)}"}), 500
+            return {"message": f"Error fetching activity: {str(e)}"}, 500
 
 
 class AdminAnalyticsResource(Resource):
@@ -194,9 +192,9 @@ class AdminAnalyticsResource(Resource):
                     }
                 )
 
-            return jsonify(analytics_data), 200
+            return analytics_data, 200
         except Exception as e:
-            return jsonify({"message": f"Error fetching analytics: {str(e)}"}), 500
+            return {"message": f"Error fetching analytics: {str(e)}"}, 500
 
 
 class AdminContentDistributionResource(Resource):
@@ -211,8 +209,7 @@ class AdminContentDistributionResource(Resource):
 
             total = community_posts + messages + reminders
 
-            return jsonify(
-                {
+            return {
                     "community_posts": community_posts,
                     "messages": messages,
                     "reminders": reminders,
@@ -234,12 +231,9 @@ class AdminContentDistributionResource(Resource):
                             "color": "#f59e0b",
                         },
                     ],
-                }
-            ), 200
+                }, 200
         except Exception as e:
-            return jsonify(
-                {"message": f"Error fetching content distribution: {str(e)}"}
-            ), 500
+            return {"message": f"Error fetching content distribution: {str(e)}"}, 500
 
 
 class AdminUsersResource(Resource):
@@ -283,16 +277,14 @@ class AdminUsersResource(Resource):
                     }
                 )
 
-            return jsonify(
-                {
+            return {
                     "users": result,
                     "total": total,
                     "limit": args["limit"],
                     "offset": args["offset"],
-                }
-            ), 200
+                }, 200
         except Exception as e:
-            return jsonify({"message": f"Error fetching users: {str(e)}"}), 500
+            return {"message": f"Error fetching users: {str(e)}"}, 500
 
 
 class AdminSettingsResource(Resource):
@@ -307,20 +299,18 @@ class AdminSettingsResource(Resource):
 
             if not settings:
                 # Return default settings if not found
-                return jsonify(
-                    {
-                        "success": True,
-                        "data": {
-                            "dashboardRefreshRate": 30,
-                            "notificationsEnabled": True,
-                            "emailAlerts": True,
-                            "darkMode": False,
-                            "autoLogoutMinutes": 60,
-                            "twoFactorEnabled": True,
-                            "timeFormat": "24h",
-                        },
-                    }
-                ), 200
+                return {
+                    "success": True,
+                    "data": {
+                        "dashboardRefreshRate": 30,
+                        "notificationsEnabled": True,
+                        "emailAlerts": True,
+                        "darkMode": False,
+                        "autoLogoutMinutes": 60,
+                        "twoFactorEnabled": True,
+                        "timeFormat": "24h",
+                    },
+                }, 200
 
             settings_data = {
                 "dashboardRefreshRate": getattr(settings, "dashboard_refresh_rate", 30),
@@ -332,18 +322,13 @@ class AdminSettingsResource(Resource):
                 "timeFormat": getattr(settings, "time_format", "24h"),
             }
 
-            return jsonify({"success": True, "data": settings_data}), 200
+            return {"success": True, "data": settings_data}, 200
         except Exception as e:
             logger.error(f"Error fetching admin settings: {str(e)}")
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Failed to fetch settings",
-                    }
-                ),
-                500,
-            )
+            return {
+                "success": False,
+                "error": "Failed to fetch settings",
+            }, 500
 
     @jwt_required()
     def post(self):
@@ -353,10 +338,7 @@ class AdminSettingsResource(Resource):
             data = request.get_json()
 
             if not data:
-                return (
-                    jsonify({"success": False, "error": "No settings provided"}),
-                    400,
-                )
+                return {"success": False, "error": "No settings provided"}, 400
 
             # Get or create settings
             settings = UserSettings.query.filter_by(user_id=user_id).first()
@@ -397,25 +379,15 @@ class AdminSettingsResource(Resource):
                 "timeFormat": getattr(settings, "time_format", "24h"),
             }
 
-            return (
-                jsonify(
-                    {
-                        "success": True,
-                        "message": "Settings saved successfully",
-                        "data": settings_data,
-                    }
-                ),
-                200,
-            )
+            return {
+                "success": True,
+                "message": "Settings saved successfully",
+                "data": settings_data,
+            }, 200
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error saving admin settings: {str(e)}")
-            return (
-                jsonify(
-                    {
-                        "success": False,
-                        "error": "Failed to save settings",
-                    }
-                ),
-                500,
-            )
+            return {
+                "success": False,
+                "error": "Failed to save settings",
+            }, 500

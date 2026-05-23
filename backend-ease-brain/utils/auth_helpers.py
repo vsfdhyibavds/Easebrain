@@ -90,14 +90,14 @@ def require_role(role_name):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            from flask_jwt_extended import verify_jwt_in_request
+            verify_jwt_in_request()
             user_id = get_jwt_identity()
-            if not user_id:
-                return jsonify({"message": "Unauthorized"}), 401
 
             if not user_has_role(user_id, role_name):
-                return jsonify(
-                    {"message": f"Forbidden: {role_name} role required"}
-                ), 403
+                return {
+                    "message": f"Forbidden: {role_name} role required"
+                }, 403
 
             return fn(*args, **kwargs)
 
@@ -115,14 +115,14 @@ def require_role_type(role_type):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            from flask_jwt_extended import verify_jwt_in_request
+            verify_jwt_in_request()
             user_id = get_jwt_identity()
-            if not user_id:
-                return jsonify({"message": "Unauthorized"}), 401
 
             if not user_has_role_type(user_id, role_type):
-                return jsonify(
-                    {"message": f"Forbidden: {role_type} role required"}
-                ), 403
+                return {
+                    "message": f"Forbidden: {role_type} role required"
+                }, 403
 
             return fn(*args, **kwargs)
 
@@ -140,15 +140,15 @@ def require_any_role(*role_names):
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            from flask_jwt_extended import verify_jwt_in_request
+            verify_jwt_in_request()
             user_id = get_jwt_identity()
-            if not user_id:
-                return jsonify({"message": "Unauthorized"}), 401
 
             has_role = any(user_has_role(user_id, role) for role in role_names)
             if not has_role:
-                return jsonify(
-                    {"message": f"Forbidden: one of {role_names} role required"}
-                ), 403
+                return {
+                    "message": f"Forbidden: one of {role_names} role required"
+                }, 403
 
             return fn(*args, **kwargs)
 
@@ -162,12 +162,11 @@ def require_admin(fn):
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
+        from flask_jwt_extended import verify_jwt_in_request
+        verify_jwt_in_request()
         user_id = get_jwt_identity()
-        if not user_id:
-            return jsonify({"message": "Unauthorized"}), 401
-
         if not user_is_admin(user_id):
-            return jsonify({"message": "Forbidden: admin role required"}), 403
+            return {"message": "Forbidden: admin role required"}, 403
 
         return fn(*args, **kwargs)
 
@@ -186,17 +185,16 @@ def allow_self_or_admin(fn):
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
+        from flask_jwt_extended import verify_jwt_in_request
+        from flask import request
+        verify_jwt_in_request()
         current_user_id = get_jwt_identity()
-        if not current_user_id:
-            return jsonify({"message": "Unauthorized"}), 401
 
         # Get the target user_id from kwargs or request
         target_user_id = kwargs.get("user_id")
 
         if not target_user_id:
             # Try to get from request body
-            from flask import request
-
             target_user_id = (
                 request.get_json().get("user_id") if request.is_json else None
             )
@@ -207,7 +205,7 @@ def allow_self_or_admin(fn):
         ):
             return fn(*args, **kwargs)
 
-        return jsonify({"message": "Forbidden"}), 403
+        return {"message": "Forbidden"}, 403
 
     return wrapper
 

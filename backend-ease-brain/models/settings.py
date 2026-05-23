@@ -21,6 +21,12 @@ class UserSettings(db.Model, SerializerMixin):
     # Theme preference
     theme = db.Column(db.String(20), default="light")
 
+    # Admin settings
+    dashboard_refresh_rate = db.Column(db.Integer, default=30)
+    auto_logout_minutes = db.Column(db.Integer, default=60)
+    two_factor_enabled = db.Column(db.Boolean, default=True)
+    time_format = db.Column(db.String(10), default="24h")
+
     # Relationship to user
     user = db.relationship("User", backref=db.backref("settings", uselist=False))
 
