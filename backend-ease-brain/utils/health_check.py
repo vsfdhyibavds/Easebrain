@@ -36,7 +36,10 @@ def detailed_health():
         user = User.query.get(user_id)
 
         # Only allow admins
-        if not user or not any(r.name == "admin" for r in user.user_roles):
+        if not user or not any(
+            user_role.role and user_role.role.name == "admin"
+            for user_role in user.user_roles
+        ):
             return jsonify({"error": "Unauthorized"}), 403
 
         return jsonify(

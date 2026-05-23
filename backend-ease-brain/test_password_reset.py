@@ -10,7 +10,7 @@ from app import app
 from models import User
 from models.user_verification import UserVerification
 
-test_email = "eugenewekesa748@gmail.com"
+test_email = "user@example.com"
 new_password = "newSecurePassword123!"
 
 with app.test_client() as client:

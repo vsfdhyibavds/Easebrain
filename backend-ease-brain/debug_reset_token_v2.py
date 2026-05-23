@@ -12,7 +12,7 @@ from models.user_verification import UserVerification
 import json
 from urllib.parse import quote, unquote
 
-test_email = "eugenewekesa748@gmail.com"
+test_email = "user@example.com"
 
 with app.test_client() as client:
     print("=" * 70)

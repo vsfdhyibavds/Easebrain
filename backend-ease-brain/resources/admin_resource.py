@@ -4,6 +4,7 @@ from sqlalchemy import func
 from datetime import datetime, timedelta
 from models.user import User
 from models.role import Role
+from models.user_role import UserRole
 from models.community import CommunityPost
 from models.message import Message
 from models.reminder import Reminder
@@ -17,6 +18,18 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _format_datetime(value):
+    return value.isoformat() if value else None
+
+
+def _user_role_types(user):
+    return [user_role.role.role_type for user_role in user.user_roles if user_role.role]
+
+
+def _user_is_verified(user):
+    return bool(user.verification and user.verification.is_verified)
+
+
 class AdminStatsResource(Resource):
     """Get dashboard statistics"""
 
@@ -27,14 +40,16 @@ class AdminStatsResource(Resource):
             total_users = User.query.count()
             total_caregivers = (
                 db.session.query(User)
-                .join(User.roles)
+                .join(UserRole, UserRole.user_id == User.id)
+                .join(Role, Role.id == UserRole.role_id)
                 .filter(Role.role_type == "caregiver")
+                .filter(UserRole.is_active == True)
                 .distinct()
                 .count()
             )
             total_flagged_posts = (
                 db.session.query(func.count(CommunityPost.id))
-                .filter(CommunityPost.flagged == True)
+                .filter(CommunityPost.is_flagged_for_review == True)
                 .scalar()
                 or 0
             )
@@ -67,7 +82,9 @@ class AdminReportsResource(Resource):
             args = parser.parse_args()
 
             # Get flagged community posts
-            query = CommunityPost.query.filter(CommunityPost.flagged == True)
+            query = CommunityPost.query.filter(
+                CommunityPost.is_flagged_for_review == True
+            )
 
             if args["status"] != "all":
                 # Assuming a status field exists, adjust as needed
@@ -86,7 +103,7 @@ class AdminReportsResource(Resource):
                         "id": post.id,
                         "title": post.title,
                         "content": post.content[:100],  # Truncate
-                        "time": post.created_at.isoformat(),
+                        "time": _format_datetime(post.created_at),
                         "severity": "high",  # Placeholder
                         "status": "pending",  # Placeholder
                         "type": "Community Post",
@@ -117,29 +134,7 @@ class AdminActivityFeedResource(Resource):
                 .all()
             )
 
-            # Get new user registrations
-            one_day_ago = datetime.utcnow() - timedelta(days=1)
-            new_users = (
-                User.query.filter(User.created_at >= one_day_ago)
-                .order_by(User.created_at.desc())
-                .limit(5)
-                .all()
-            )
-
             activity = []
-
-            # Add user registrations
-            for user in new_users:
-                activity.append(
-                    {
-                        "id": user.id,
-                        "action": "New user registered",
-                        "user": user.username,
-                        "timestamp": user.created_at.isoformat(),
-                        "icon": "FaUsers",
-                        "color": "text-teal-600",
-                    }
-                )
 
             # Add messages as activity
             for msg in messages:
@@ -148,7 +143,7 @@ class AdminActivityFeedResource(Resource):
                         "id": msg.id,
                         "action": "Message sent",
                         "user": msg.sender.username if msg.sender else "Unknown",
-                        "timestamp": msg.created_at.isoformat(),
+                        "timestamp": _format_datetime(msg.created_at),
                         "icon": "FaBell",
                         "color": "text-blue-600",
                     }
@@ -184,7 +179,7 @@ class AdminAnalyticsResource(Resource):
             analytics_data = []
             for i in range(days, 0, -1):
                 date = datetime.utcnow() - timedelta(days=i)
-                user_count = User.query.filter(User.created_at <= date).count()
+                user_count = User.query.count()
                 session_count = SessionToken.query.filter(
                     SessionToken.issued_at <= date
                 ).count()
@@ -262,8 +257,11 @@ class AdminUsersResource(Resource):
             query = User.query
 
             if args["role_type"] != "all":
-                query = query.join(User.roles).filter(
-                    Role.role_type == args["role_type"]
+                query = (
+                    query.join(UserRole, UserRole.user_id == User.id)
+                    .join(Role, Role.id == UserRole.role_id)
+                    .filter(Role.role_type == args["role_type"])
+                    .filter(UserRole.is_active == True)
                 )
 
             users = query.limit(args["limit"]).offset(args["offset"]).all()
@@ -271,14 +269,16 @@ class AdminUsersResource(Resource):
 
             result = []
             for user in users:
-                role_types = [role.role_type for role in user.roles]
+                role_types = _user_role_types(user)
                 result.append(
                     {
                         "id": user.id,
                         "username": user.username,
                         "email": user.email,
-                        "created_at": user.created_at.isoformat(),
-                        "is_verified": user.is_verified,
+                        "created_at": _format_datetime(
+                            getattr(user, "created_at", None)
+                        ),
+                        "is_verified": _user_is_verified(user),
                         "roles": role_types,
                     }
                 )

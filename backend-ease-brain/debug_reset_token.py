@@ -8,7 +8,7 @@ from models.user_verification import UserVerification
 
 load_dotenv()
 
-test_email = "eugenewekesa748@gmail.com"
+test_email = "user@example.com"
 
 with app.test_client() as client:
     print("=" * 70)

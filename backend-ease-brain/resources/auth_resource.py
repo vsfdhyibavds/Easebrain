@@ -480,6 +480,7 @@ class LoginResource(Resource):
         # Create response with user data and token
         response_data = {
             "message": "Login successful",
+            "access_token": access_token,
             "user": user_payload,
         }
 
@@ -545,9 +546,9 @@ class ResendVerificationEmailResource(Resource):
 
         # Try to get user from JWT if provided
         try:
-            from flask_jwt_extended import verify_jwt_in_request_optional
+            from flask_jwt_extended import verify_jwt_in_request
 
-            verify_jwt_in_request_optional()
+            verify_jwt_in_request(optional=True)
             user_id = get_jwt_identity()
             if user_id:
                 user = User.query.get(user_id)

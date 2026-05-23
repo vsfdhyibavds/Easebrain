@@ -145,6 +145,7 @@ def log_admin_event(
 def configure_audit_logging(app):
     """Configure audit logging for the Flask app"""
     # Create audit log file handler
+    import os
     import logging.handlers
 
     if not audit_logger.handlers:
@@ -159,8 +160,10 @@ def configure_audit_logging(app):
 
         # File handler for audit logs (rotate daily)
         try:
+            log_dir = os.path.join(app.root_path, "logs")
+            os.makedirs(log_dir, exist_ok=True)
             file_handler = logging.handlers.RotatingFileHandler(
-                "logs/audit.log",
+                os.path.join(log_dir, "audit.log"),
                 maxBytes=10485760,  # 10MB
                 backupCount=10,
             )

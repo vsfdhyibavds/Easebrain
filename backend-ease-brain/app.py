@@ -299,23 +299,6 @@ def is_safe_url(target):
     )
 
 
-# Register blueprints with /api prefix to match Flask-RESTful API resources
-app.register_blueprint(
-    auth_bp, url_prefix="/api"
-)  # Signup, login, password reset, etc.
-app.register_blueprint(story_bp, url_prefix="/api")  # /api/stories
-app.register_blueprint(caregiver_connection_bp, url_prefix="/api")  # /api/caregivers
-app.register_blueprint(community_bp, url_prefix="/api/community")  # /api/community
-app.register_blueprint(moderation_bp, url_prefix="/api")  # /api/moderation
-app.register_blueprint(safety_plan_bp, url_prefix="/api")  # /api/safety-plans
-app.register_blueprint(
-    health_bp, url_prefix="/api"
-)  # /api/health and /api/health/detailed
-app.register_blueprint(
-    swagger_bp, url_prefix="/api"
-)  # /api/docs, /api/openapi.json, /api/error-codes
-
-
 class Index(Resource):
     def get(self):
         return {"message": "Welcome to Ease Brain"}
@@ -392,6 +375,24 @@ api.add_resource(OrganizationLoginResource, "/organization/login")
 api.add_resource(OrganizationDashboardResource, "/organization/dashboard")
 api.add_resource(PasswordResetResource, "/forgot-password")
 api.add_resource(PasswordResetConfirmResource, "/reset-password")
+
+# Register blueprints after Flask-RESTful resources so duplicated auth paths
+# (/api/signup, /api/login, /api/resend-email-verification) resolve to the
+# resource implementations that match the current frontend payloads.
+app.register_blueprint(
+    auth_bp, url_prefix="/api"
+)  # Role switching, verification helpers, and legacy auth routes
+app.register_blueprint(story_bp, url_prefix="/api")  # /api/stories
+app.register_blueprint(caregiver_connection_bp, url_prefix="/api")  # /api/caregivers
+app.register_blueprint(community_bp, url_prefix="/api/community")  # /api/community
+app.register_blueprint(moderation_bp, url_prefix="/api")  # /api/moderation
+app.register_blueprint(safety_plan_bp, url_prefix="/api")  # /api/safety-plans
+app.register_blueprint(
+    health_bp, url_prefix="/api"
+)  # /api/health and /api/health/detailed
+app.register_blueprint(
+    swagger_bp, url_prefix="/api"
+)  # /api/docs, /api/openapi.json, /api/error-codes
 
 
 @app.route("/verify/<token>", methods=["GET"])

@@ -56,6 +56,13 @@ yarn-error.log
 .env.local
 .env.*.local
 
+# API response dumps and local debug captures
+response.txt
+response*.txt
+*.response.txt
+headers.txt
+*.headers.txt
+
 # Build
 dist/
 build/

@@ -26,7 +26,7 @@ echo "✅ All required environment variables are set"
 # Wait for database to be ready (retry logic)
 echo "⏳ Waiting for database to be ready..."
 for i in {1..30}; do
-    if python -c "from app import app, db; app.app_context().push(); db.session.execute('SELECT 1')" 2>/dev/null; then
+    if python -c "from app import app, db; from sqlalchemy import text; app.app_context().push(); db.session.execute(text('SELECT 1'))" 2>/dev/null; then
         echo "✅ Database is ready"
         break
     fi

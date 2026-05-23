@@ -328,7 +328,12 @@ class CaregiverDependentResource(Resource):
                 email=f"dependent-{datetime.now().timestamp()}@easebrain.local",
                 password_hash="",  # Dependents don't have passwords
                 is_active=True,
-                full_name=args.name,
+                first_name=args.name.split()[0] if args.name else "",
+                last_name=(
+                    " ".join(args.name.split()[1:])
+                    if args.name and len(args.name.split()) > 1
+                    else ""
+                ),
             )
 
             db.session.add(dependent)

@@ -40,4 +40,4 @@ def check_verification(email):
 
 
 if __name__ == "__main__":
-    check_verification("eugenewekesa748@gmail.com")
+    check_verification("user@example.com")

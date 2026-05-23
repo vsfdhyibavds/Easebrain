@@ -36,6 +36,13 @@ sendgrid.env
 .env.development
 .env.production
 
+# API response dumps and local debug captures
+response.txt
+response*.txt
+*.response.txt
+headers.txt
+*.headers.txt
+
 # IDE
 .vscode/
 .idea/
