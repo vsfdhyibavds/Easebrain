@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 
 export interface FilterConfig {
   field: string;
@@ -8,7 +8,7 @@ export interface FilterConfig {
 
 interface UseFiltersOptions<T> {
   data: T[];
-  // debounceMs?: number;  // TODO: implement debouncing if needed
+  debounceMs?: number;  // Debounce delay in milliseconds (default: 300ms)
 }
 
 interface UseFiltersReturn<T> {
@@ -23,9 +23,32 @@ interface UseFiltersReturn<T> {
 
 export const useFilters = <T extends Record<string, any>>({
   data,
+  debounceMs = 300,
 }: UseFiltersOptions<T>): UseFiltersReturn<T> => {
   const [filters, setFilters] = useState<FilterConfig[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounce search query updates
+  useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer for debounced search
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, debounceMs);
+
+    // Cleanup on unmount
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchQuery, debounceMs]);
 
   const addFilter = useCallback((filter: FilterConfig) => {
     setFilters((prev) => {
@@ -73,9 +96,9 @@ export const useFilters = <T extends Record<string, any>>({
   const filteredData = useMemo(() => {
     let result = data;
 
-    // Apply search query across all string fields
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    // Apply debounced search query across all string fields
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
       result = result.filter((item) =>
         Object.values(item).some((val) =>
           String(val).toLowerCase().includes(query)
@@ -89,7 +112,7 @@ export const useFilters = <T extends Record<string, any>>({
     );
 
     return result;
-  }, [data, searchQuery, filters]);
+  }, [data, debouncedSearchQuery, filters]);
 
   return {
     filteredData,

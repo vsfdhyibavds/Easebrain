@@ -13,34 +13,38 @@ const ExportModal: FC<ExportModalProps> = ({ isOpen, onClose }) => {
   const handleExport = async () => {
     setIsLoading(true);
     try {
-      // TODO: Connect to API to fetch data
-      const data = {
-        dependents: [],
-        tasks: [],
-        users: [],
-        exportDate: new Date().toISOString(),
-      };
+      // Fetch data from API based on selected format
+      const apiUrl = `${process.env.VITE_BASE_URL || "http://localhost:5500/api"}/admin/export?format=${format}`;
+
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("access_token")}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
 
       let content = "";
       let filename = "";
       let mimeType = "";
 
-      switch (format) {
-        case "csv":
-          content = convertToCSV(data);
-          filename = `easebrain-export-${new Date().toISOString().split("T")[0]}.csv`;
-          mimeType = "text/csv";
-          break;
-        case "json":
-          content = JSON.stringify(data, null, 2);
-          filename = `easebrain-export-${new Date().toISOString().split("T")[0]}.json`;
-          mimeType = "application/json";
-          break;
-        case "excel":
-          content = convertToCSV(data); // Could use xlsx library for true Excel
-          filename = `easebrain-export-${new Date().toISOString().split("T")[0]}.xlsx`;
-          mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-          break;
+      if (format === "json") {
+        const data = await response.json();
+        content = JSON.stringify(data, null, 2);
+        filename = `easebrain-export-${new Date().toISOString().split("T")[0]}.json`;
+        mimeType = "application/json";
+      } else if (format === "csv") {
+        content = await response.text();
+        filename = `easebrain-export-${new Date().toISOString().split("T")[0]}.csv`;
+        mimeType = "text/csv";
+      } else if (format === "excel") {
+        content = await response.text();
+        filename = `easebrain-export-${new Date().toISOString().split("T")[0]}.xlsx`;
+        mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
       }
 
       // Create blob and download
@@ -55,7 +59,7 @@ const ExportModal: FC<ExportModalProps> = ({ isOpen, onClose }) => {
       onClose();
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Export failed. Please try again.");
+      alert(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsLoading(false);
     }

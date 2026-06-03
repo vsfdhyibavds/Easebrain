@@ -135,7 +135,7 @@ const routes = createBrowserRouter([
       { path: "messages", element: <Messages /> },
       {
         path: "caregiver-notes",
-        // element: <CaregiverProtectedRoute />,
+        element: <CaregiverProtectedRoute />,
         children: [
           { index: true, element: <CaregiverNotes /> },
         ],
@@ -157,7 +157,7 @@ const routes = createBrowserRouter([
   { path: "/unauthorized", element: <Unauthorized /> },
   {
     path: "/caregiver",
-    // element: <CaregiverProtectedRoute />,
+    element: <CaregiverProtectedRoute />,
     errorElement: <ErrorBoundary />,
     children: [
       { index: true, element: <Suspense fallback={<LoadingSpinner />}><CaregiverDashboard /></Suspense> },
@@ -171,7 +171,7 @@ const routes = createBrowserRouter([
   },
   {
     path: "/admin",
-    element: <AdminProtectedRoute />,  // TODO: Uncomment protection checks if needed
+    element: <AdminProtectedRoute />,
     errorElement: <ErrorBoundary />,
     children: [
       { index: true, element: <AdminDashboardEnhanced /> },

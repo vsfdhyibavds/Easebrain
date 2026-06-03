@@ -1,5 +1,5 @@
 from flask_restful import Resource, reqparse
-from models import Message, Conversation, User
+from models import Message, Conversation, User, CaregiverConnection
 from extensions import db
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -7,6 +7,7 @@ from .serializers import serialize_model
 from utils.danger_detector import get_detector
 from utils.llm_danger_detector import get_llm_detector
 from utils.task_queue import get_task_queue
+from utils.notification_service import NotificationService
 import logging
 import uuid
 
@@ -153,15 +154,27 @@ class MessageResource(Resource):
             content=data["content"],
         )
 
-        # If critical danger detected, flag message status immediately
+        # If critical danger detected, flag message status immediately and notify caregivers
         if detection_result.severity_level.value == "critical":
             message.message_status = "flagged_danger"
             logger.error(
                 f"CRITICAL danger detected in message from user {data['sender_id']}: "
                 f"{detection_result.categories}"
             )
+            # Notify caregivers of sender (if sender is a patient with caregivers)
+            _notify_caregivers_of_danger(
+                sender_id=data["sender_id"],
+                severity="critical",
+                signs_detected=", ".join(detection_result.categories),
+            )
         elif detection_result.severity_level.value == "high":
             message.message_status = "pending_review"
+            # Notify caregivers of high-severity danger
+            _notify_caregivers_of_danger(
+                sender_id=data["sender_id"],
+                severity="high",
+                signs_detected=", ".join(detection_result.categories),
+            )
         else:
             # For medium/low, submit async LLM enhancement if enabled
             message.message_status = "sent"
@@ -290,3 +303,49 @@ class MessageResource(Resource):
         db.session.delete(message)
         db.session.commit()
         return {"message": f"Message {message_id} deleted."}, 204
+
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+
+def _notify_caregivers_of_danger(sender_id: int, severity: str, signs_detected: str):
+    """
+    Notify all caregivers of a patient when danger is detected in their message.
+
+    Args:
+        sender_id: ID of the user who sent the dangerous message
+        severity: Danger severity level ("high" or "critical")
+        signs_detected: Comma-separated list of detected warning signs
+    """
+    try:
+        # Find all active caregiver connections for this sender (if they're a patient)
+        connections = CaregiverConnection.query.filter_by(
+            patient_id=sender_id, is_active=True
+        ).all()
+
+        if not connections:
+            logger.info(f"No caregivers found for patient {sender_id}")
+            return
+
+        # Notify each connected caregiver
+        for connection in connections:
+            try:
+                NotificationService.send_warning_sign_notification(
+                    connection_id=connection.id,
+                    severity=severity,
+                    signs_detected=signs_detected,
+                    patient_notes="Detected in direct message",
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error notifying caregiver {connection.caregiver_id}: {str(e)}",
+                    exc_info=True,
+                )
+
+    except Exception as e:
+        logger.error(
+            f"Error notifying caregivers of danger for user {sender_id}: {str(e)}",
+            exc_info=True,
+        )

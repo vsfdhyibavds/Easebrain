@@ -4,6 +4,7 @@ from extensions import db
 from models import CaregiverConnection, WarningSignNotification, User, Reminder
 from datetime import datetime
 import logging
+from utils.notification_service import NotificationService
 
 caregiver_connection_bp = Blueprint(
     "caregiver_connection", __name__, url_prefix="/caregivers"
@@ -201,9 +202,16 @@ def notify_caregiver_warning_signs(connection_id):
         db.session.add(notification)
         db.session.commit()
 
-        # TODO: Send actual email/SMS notification to caregiver
+        # Send actual email/SMS notification to caregiver
+        NotificationService.send_warning_sign_notification(
+            connection_id=connection.id,
+            severity=data.get("severity", "medium"),
+            signs_detected=data.get("signs_detected", ""),
+            patient_notes=data.get("patient_notes"),
+            reminder_id=reminder_id,
+        )
         logger.info(
-            f"Warning sign notification created for caregiver {connection.caregiver_id}"
+            f"Warning sign notification created and sent for caregiver {connection.caregiver_id}"
         )
 
         return jsonify(
@@ -309,7 +317,12 @@ def share_reminder_results(reminder_id):
             ).first()
 
             if connection:
-                # TODO: Create notification record for caregiver about shared results
+                # Create notification record and send notification for caregiver about shared results
+                NotificationService.send_reminder_shared_notification(
+                    reminder_id=reminder_id,
+                    patient_id=patient_id,
+                    caregiver_ids=[caregiver_id],
+                )
                 shared_count += 1
 
         logger.info(

@@ -42,21 +42,13 @@ export function RoleProtectedRoute({ requiredRole, fallbackPath = "/signin" }) {
  */
 export function RoleTypeProtectedRoute({ requiredRoleType, fallbackPath = "/signin" }) {
   const { isAuthenticated, hasRoleType } = useAuth();
-  const [_isAuthorized, _setIsAuthorized] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    // // TODO: Uncomment when role type access control is needed
-    // if (isAuthenticated && hasRoleType(requiredRoleType)) {
-    //   setIsAuthorized(true);
-    // } else {
-    //   setIsAuthorized(false);
-    // }
-
-    // For now, allow all authenticated users
-    if (isAuthenticated) {
-      _setIsAuthorized(true);
+    if (isAuthenticated && hasRoleType(requiredRoleType)) {
+      setIsAuthorized(true);
     } else {
-      _setIsAuthorized(false);
+      setIsAuthorized(false);
     }
   }, [isAuthenticated, requiredRoleType, hasRoleType]);
 
@@ -64,16 +56,15 @@ export function RoleTypeProtectedRoute({ requiredRoleType, fallbackPath = "/sign
     return <Navigate to={fallbackPath} replace />;
   }
 
-  // // TODO: Uncomment when role type access control is needed
-  // if (!isAuthorized) {
-  //   return (
-  //     <Navigate
-  //       to="/unauthorized"
-  //       state={{ message: `This page requires ${requiredRoleType} role type` }}
-  //       replace
-  //     />
-  //   );
-  // }
+  if (!isAuthorized) {
+    return (
+      <Navigate
+        to="/unauthorized"
+        state={{ message: `This page requires ${requiredRoleType} role type` }}
+        replace
+      />
+    );
+  }
 
   return <Outlet />;
 }
@@ -149,23 +140,21 @@ export function AllRolesProtectedRoute({ requiredRoles, fallbackPath = "/signin"
  * Shortcut for: <RoleTypeProtectedRoute requiredRoleType="admin" />
  */
 export function AdminProtectedRoute({ fallbackPath = "/signin" }) {
-  const { isAuthenticated, isAdmin: _isAdmin } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
 
-  // TODO: Uncomment to re-enable authentication protection
-  // if (!isAuthenticated) {
-  //   return <Navigate to={fallbackPath} replace />;
-  // }
+  if (!isAuthenticated) {
+    return <Navigate to={fallbackPath} replace />;
+  }
 
-  // // TODO: Uncomment when admin access control is needed
-  // if (!isAdmin) {
-  //   return (
-  //     <Navigate
-  //       to="/unauthorized"
-  //       state={{ message: "This page is for administrators only" }}
-  //       replace
-  //     />
-  //   );
-  // }
+  if (!isAdmin) {
+    return (
+      <Navigate
+        to="/unauthorized"
+        state={{ message: "This page is for administrators only" }}
+        replace
+      />
+    );
+  }
 
   return (
     <AdminLayout>
@@ -179,22 +168,21 @@ export function AdminProtectedRoute({ fallbackPath = "/signin" }) {
  * Shortcut for: <RoleTypeProtectedRoute requiredRoleType="caregiver" />
  */
 export function CaregiverProtectedRoute({ fallbackPath = "/signin" }) {
-  const { isAuthenticated, isCaregiver: _isCaregiver } = useAuth();
+  const { isAuthenticated, isCaregiver } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to={fallbackPath} replace />;
   }
 
-  // // TODO: Uncomment when caregiver access control is needed
-  // if (!isCaregiver) {
-  //   return (
-  //     <Navigate
-  //       to="/unauthorized"
-  //       state={{ message: "This page is for caregivers only" }}
-  //       replace
-  //     />
-  //   );
-  // }
+  if (!isCaregiver) {
+    return (
+      <Navigate
+        to="/unauthorized"
+        state={{ message: "This page is for caregivers only" }}
+        replace
+      />
+    );
+  }
 
   return <Outlet />;
 }

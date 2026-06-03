@@ -11,7 +11,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import User, UserVerification, Role, UserRole
 from extensions import db
 from utils.send_email import send_email_notification
-from utils.auth_helpers import get_user_roles, get_user_role_types
+from utils.auth_helpers import (
+    get_user_roles,
+    get_user_role_types,
+    user_is_admin,
+    user_is_caregiver,
+)
 from utils.audit_logger import log_auth_event
 from utils.jwt_blacklist import revoke_token
 from utils.rate_limiter import limiter
@@ -341,6 +346,8 @@ class SignupResource(Resource):
             additional_claims = {
                 "roles": get_user_roles(user.id),
                 "role_types": get_user_role_types(user.id),
+                "is_admin": user_is_admin(user.id),
+                "is_caregiver": user_is_caregiver(user.id),
             }
             access_token = create_access_token(
                 identity=user.id, additional_claims=additional_claims
@@ -360,6 +367,8 @@ class SignupResource(Resource):
                 "organization_id": user.organization_id,
                 "roles": get_user_roles(user.id),
                 "role_types": get_user_role_types(user.id),
+                "is_admin": user_is_admin(user.id),
+                "is_caregiver": user_is_caregiver(user.id),
             }
 
             log_auth_event("signup", user.email, status="success")
@@ -454,6 +463,8 @@ class LoginResource(Resource):
         additional_claims = {
             "roles": get_user_roles(user.id),
             "role_types": get_user_role_types(user.id),
+            "is_admin": user_is_admin(user.id),
+            "is_caregiver": user_is_caregiver(user.id),
         }
         access_token = create_access_token(
             identity=user.id, additional_claims=additional_claims
@@ -473,6 +484,8 @@ class LoginResource(Resource):
             "organization_id": user.organization_id,
             "roles": get_user_roles(user.id),
             "role_types": get_user_role_types(user.id),
+            "is_admin": user_is_admin(user.id),
+            "is_caregiver": user_is_caregiver(user.id),
         }
 
         log_auth_event("login", user.email, status="success")

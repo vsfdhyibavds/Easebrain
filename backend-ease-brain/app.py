@@ -57,6 +57,10 @@ from resources.admin_resource import (
     AdminUsersResource,
     AdminSettingsResource,
 )
+from resources.export_resource import (
+    AdminDataExportResource,
+    UserDataExportResource,
+)
 
 from resources.organization_login_resource import (
     OrganizationRegisterResource,
@@ -371,6 +375,8 @@ api.add_resource(AdminAnalyticsResource, "/admin/analytics")
 api.add_resource(AdminContentDistributionResource, "/admin/content-distribution")
 api.add_resource(AdminUsersResource, "/admin/users")
 api.add_resource(AdminSettingsResource, "/admin/settings")
+api.add_resource(AdminDataExportResource, "/admin/export")
+api.add_resource(UserDataExportResource, "/admin/export/user/<int:user_id>")
 api.add_resource(OrganizationLoginResource, "/organization/login")
 api.add_resource(OrganizationDashboardResource, "/organization/dashboard")
 api.add_resource(PasswordResetResource, "/forgot-password")
