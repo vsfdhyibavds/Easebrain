@@ -5,12 +5,23 @@ Handles sending notifications to caregivers via email and SMS
 
 import os
 import logging
+import time
 from datetime import datetime
 from utils.send_email import send_email_notification
+from utils.notification_monitor import (
+    get_notification_monitor,
+    NotificationType,
+    log_notification_attempt,
+    log_notification_success,
+    log_notification_failure,
+    log_notification_skipped,
+    log_email_service_error,
+)
 from models import User, CaregiverConnection, WarningSignNotification, Reminder
 from extensions import db
 
 logger = logging.getLogger(__name__)
+monitor = get_notification_monitor()
 
 
 class NotificationService:
@@ -34,14 +45,30 @@ class NotificationService:
             patient_notes: Optional notes from patient
             reminder_id: Optional associated reminder
         """
+        start_time = time.time()
+
         try:
             connection = CaregiverConnection.query.get(connection_id)
             if not connection:
                 logger.error(f"Connection {connection_id} not found")
+                log_notification_failure(
+                    NotificationType.WARNING_SIGN,
+                    0,
+                    "unknown",
+                    "Connection not found",
+                    "connection_not_found",
+                    {"connection_id": connection_id}
+                )
                 return False
 
             # Check if caregiver wants notifications
             if not connection.notify_on_warning_signs:
+                log_notification_skipped(
+                    NotificationType.WARNING_SIGN,
+                    connection.caregiver_id,
+                    "Caregiver has disabled warning sign notifications",
+                    {"connection_id": connection_id}
+                )
                 logger.info(
                     f"Caregiver {connection.caregiver_id} has disabled warning notifications"
                 )
@@ -51,8 +78,29 @@ class NotificationService:
             patient = connection.patient
 
             if not caregiver or not caregiver.email:
+                log_notification_failure(
+                    NotificationType.WARNING_SIGN,
+                    connection.caregiver_id,
+                    "unknown",
+                    "Caregiver has no email",
+                    "no_email",
+                    {"connection_id": connection_id}
+                )
                 logger.error(f"Caregiver {connection.caregiver_id} has no email")
                 return False
+
+            # Log attempt
+            log_notification_attempt(
+                NotificationType.WARNING_SIGN,
+                caregiver.id,
+                caregiver.email,
+                connection_id=connection_id,
+                severity=severity,
+                metadata={
+                    "patient_id": patient.id if patient else None,
+                    "reminder_id": reminder_id
+                }
+            )
 
             # Create notification record
             notification = WarningSignNotification(
@@ -76,19 +124,45 @@ class NotificationService:
                 connection=connection,
             )
 
+            delivery_time = (time.time() - start_time) * 1000  # Convert to ms
+
             if success:
+                log_notification_success(
+                    NotificationType.WARNING_SIGN,
+                    caregiver.id,
+                    caregiver.email,
+                    delivery_time,
+                    metadata={"connection_id": connection_id, "severity": severity}
+                )
                 logger.info(
                     f"Warning notification sent to {caregiver.email} "
-                    f"for patient {patient.username}"
+                    f"for patient {patient.username} in {delivery_time:.2f}ms"
                 )
                 return True
             else:
+                log_notification_failure(
+                    NotificationType.WARNING_SIGN,
+                    caregiver.id,
+                    caregiver.email,
+                    "Email sending returned False",
+                    "send_failed",
+                    {"connection_id": connection_id}
+                )
                 logger.warning(
                     f"Failed to send warning notification to {caregiver.email}"
                 )
                 return False
 
         except Exception as e:
+            delivery_time = (time.time() - start_time) * 1000
+            log_notification_failure(
+                NotificationType.WARNING_SIGN,
+                connection.caregiver_id if connection else 0,
+                connection.caregiver.email if connection and connection.caregiver else "unknown",
+                str(e),
+                type(e).__name__,
+                {"connection_id": connection_id, "delivery_time_ms": delivery_time}
+            )
             logger.error(f"Error sending warning notification: {str(e)}", exc_info=True)
             return False
 
@@ -104,11 +178,16 @@ class NotificationService:
             patient_id: Patient ID
             caregiver_ids: List of caregiver IDs to notify
         """
+        start_time = time.time()
+
         try:
             reminder = Reminder.query.get(reminder_id)
             patient = User.query.get(patient_id)
 
             if not reminder or not patient:
+                log_email_service_error(
+                    f"Reminder {reminder_id} or Patient {patient_id} not found"
+                )
                 logger.error(
                     f"Reminder {reminder_id} or Patient {patient_id} not found"
                 )
@@ -116,46 +195,112 @@ class NotificationService:
 
             sent_count = 0
             for caregiver_id in caregiver_ids:
-                connection = CaregiverConnection.query.filter_by(
-                    patient_id=patient_id, caregiver_id=caregiver_id, is_active=True
-                ).first()
+                try:
+                    connection = CaregiverConnection.query.filter_by(
+                        patient_id=patient_id, caregiver_id=caregiver_id, is_active=True
+                    ).first()
 
-                if not connection:
-                    logger.warning(
-                        f"No connection between patient {patient_id} and caregiver {caregiver_id}"
+                    if not connection:
+                        logger.warning(
+                            f"No connection between patient {patient_id} and caregiver {caregiver_id}"
+                        )
+                        continue
+
+                    # Check if caregiver wants notifications
+                    if not connection.notify_on_reminders:
+                        log_notification_skipped(
+                            NotificationType.REMINDER_SHARED,
+                            caregiver_id,
+                            "Caregiver has disabled reminder notifications",
+                            {"reminder_id": reminder_id, "patient_id": patient_id}
+                        )
+                        logger.info(
+                            f"Caregiver {caregiver_id} has disabled reminder notifications"
+                        )
+                        continue
+
+                    caregiver = connection.caregiver
+                    if not caregiver or not caregiver.email:
+                        log_notification_failure(
+                            NotificationType.REMINDER_SHARED,
+                            caregiver_id,
+                            "unknown",
+                            "Caregiver has no email",
+                            "no_email",
+                            {"reminder_id": reminder_id}
+                        )
+                        logger.error(f"Caregiver {caregiver_id} has no email")
+                        continue
+
+                    # Log attempt
+                    log_notification_attempt(
+                        NotificationType.REMINDER_SHARED,
+                        caregiver.id,
+                        caregiver.email,
+                        metadata={
+                            "reminder_id": reminder_id,
+                            "patient_id": patient_id
+                        }
+                    )
+
+                    # Send email
+                    success = _send_reminder_shared_email(
+                        caregiver=caregiver,
+                        patient=patient,
+                        reminder=reminder,
+                        connection=connection,
+                    )
+
+                    delivery_time = (time.time() - start_time) * 1000
+
+                    if success:
+                        sent_count += 1
+                        log_notification_success(
+                            NotificationType.REMINDER_SHARED,
+                            caregiver.id,
+                            caregiver.email,
+                            delivery_time,
+                            metadata={"reminder_id": reminder_id}
+                        )
+                        logger.info(
+                            f"Reminder shared notification sent to {caregiver.email} "
+                            f"for patient {patient.username} in {delivery_time:.2f}ms"
+                        )
+                    else:
+                        log_notification_failure(
+                            NotificationType.REMINDER_SHARED,
+                            caregiver.id,
+                            caregiver.email,
+                            "Email sending returned False",
+                            "send_failed",
+                            {"reminder_id": reminder_id}
+                        )
+
+                except Exception as inner_e:
+                    delivery_time = (time.time() - start_time) * 1000
+                    log_notification_failure(
+                        NotificationType.REMINDER_SHARED,
+                        caregiver_id,
+                        "unknown",
+                        str(inner_e),
+                        type(inner_e).__name__,
+                        {"reminder_id": reminder_id, "delivery_time_ms": delivery_time}
+                    )
+                    logger.error(
+                        f"Error sending reminder notification to caregiver {caregiver_id}: {str(inner_e)}",
+                        exc_info=True
                     )
                     continue
-
-                # Check if caregiver wants notifications
-                if not connection.notify_on_reminders:
-                    logger.info(
-                        f"Caregiver {caregiver_id} has disabled reminder notifications"
-                    )
-                    continue
-
-                caregiver = connection.caregiver
-                if not caregiver or not caregiver.email:
-                    logger.error(f"Caregiver {caregiver_id} has no email")
-                    continue
-
-                # Send email
-                success = _send_reminder_shared_email(
-                    caregiver=caregiver,
-                    patient=patient,
-                    reminder=reminder,
-                    connection=connection,
-                )
-
-                if success:
-                    sent_count += 1
-                    logger.info(
-                        f"Reminder shared notification sent to {caregiver.email} "
-                        f"for patient {patient.username}"
-                    )
 
             return sent_count
 
         except Exception as e:
+            delivery_time = (time.time() - start_time) * 1000
+            log_email_service_error(
+                str(e),
+                "reminder_notification_error",
+                {"reminder_id": reminder_id, "delivery_time_ms": delivery_time}
+            )
             logger.error(
                 f"Error sending reminder shared notification: {str(e)}", exc_info=True
             )
@@ -175,14 +320,30 @@ class NotificationService:
             crisis_description: Description of the crisis event
             patient_notes: Optional context from patient
         """
+        start_time = time.time()
+
         try:
             connection = CaregiverConnection.query.get(connection_id)
             if not connection:
+                log_notification_failure(
+                    NotificationType.CRISIS_ALERT,
+                    0,
+                    "unknown",
+                    "Connection not found",
+                    "connection_not_found",
+                    {"connection_id": connection_id}
+                )
                 logger.error(f"Connection {connection_id} not found")
                 return False
 
             # Check if caregiver wants crisis notifications
             if not connection.notify_on_crisis:
+                log_notification_skipped(
+                    NotificationType.CRISIS_ALERT,
+                    connection.caregiver_id,
+                    "Caregiver has disabled crisis notifications",
+                    {"connection_id": connection_id}
+                )
                 logger.info(
                     f"Caregiver {connection.caregiver_id} has disabled crisis notifications"
                 )
@@ -192,12 +353,79 @@ class NotificationService:
             patient = connection.patient
 
             if not caregiver or not caregiver.email:
+                log_notification_failure(
+                    NotificationType.CRISIS_ALERT,
+                    connection.caregiver_id,
+                    "unknown",
+                    "Caregiver has no email",
+                    "no_email",
+                    {"connection_id": connection_id}
+                )
                 logger.error(f"Caregiver {connection.caregiver_id} has no email")
                 return False
+
+            # Log attempt - crisis notifications are urgent
+            log_notification_attempt(
+                NotificationType.CRISIS_ALERT,
+                caregiver.id,
+                caregiver.email,
+                connection_id=connection_id,
+                metadata={
+                    "patient_id": patient.id if patient else None,
+                    "urgent": True
+                }
+            )
 
             # Send crisis alert email
             success = _send_crisis_alert_email(
                 caregiver=caregiver,
+                patient=patient,
+                crisis_description=crisis_description,
+                patient_notes=patient_notes,
+                connection=connection,
+            )
+
+            delivery_time = (time.time() - start_time) * 1000
+
+            if success:
+                log_notification_success(
+                    NotificationType.CRISIS_ALERT,
+                    caregiver.id,
+                    caregiver.email,
+                    delivery_time,
+                    metadata={"connection_id": connection_id, "urgent": True}
+                )
+                logger.info(
+                    f"Crisis notification sent to {caregiver.email} "
+                    f"for patient {patient.username} in {delivery_time:.2f}ms"
+                )
+                return True
+            else:
+                log_notification_failure(
+                    NotificationType.CRISIS_ALERT,
+                    caregiver.id,
+                    caregiver.email,
+                    "Email sending returned False",
+                    "send_failed",
+                    {"connection_id": connection_id}
+                )
+                logger.warning(
+                    f"Failed to send crisis notification to {caregiver.email}"
+                )
+                return False
+
+        except Exception as e:
+            delivery_time = (time.time() - start_time) * 1000
+            log_notification_failure(
+                NotificationType.CRISIS_ALERT,
+                connection.caregiver_id if connection else 0,
+                connection.caregiver.email if connection and connection.caregiver else "unknown",
+                str(e),
+                type(e).__name__,
+                {"connection_id": connection_id, "delivery_time_ms": delivery_time}
+            )
+            logger.error(f"Error sending crisis notification: {str(e)}", exc_info=True)
+            return False
                 patient=patient,
                 crisis_description=crisis_description,
                 patient_notes=patient_notes,

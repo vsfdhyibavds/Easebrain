@@ -29,6 +29,9 @@
     /* Allow JSX imports without type declarations (temporary during migration) */
     "noImplicitAny": false,
 
+    /* Suppress TypeScript 6.0 deprecations */
+    "ignoreDeprecations": "6.0",
+
     /* Path aliases */
     "baseUrl": ".",
     "paths": {

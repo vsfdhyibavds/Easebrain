@@ -61,6 +61,11 @@ from resources.export_resource import (
     AdminDataExportResource,
     UserDataExportResource,
 )
+from resources.notification_monitoring_resource import (
+    NotificationStatsResource,
+    NotificationLogsResource,
+    NotificationDownloadResource,
+)
 
 from resources.organization_login_resource import (
     OrganizationRegisterResource,
@@ -372,6 +377,12 @@ api.add_resource(AdminUsersResource, "/admin/users")
 api.add_resource(AdminSettingsResource, "/admin/settings")
 api.add_resource(AdminDataExportResource, "/admin/export")
 api.add_resource(UserDataExportResource, "/admin/export/user/<int:user_id>")
+
+# Notification monitoring resources
+api.add_resource(NotificationStatsResource, "/admin/notifications/stats")
+api.add_resource(NotificationLogsResource, "/admin/notifications/logs")
+api.add_resource(NotificationDownloadResource, "/admin/notifications/download")
+
 api.add_resource(OrganizationLoginResource, "/organization/login")
 api.add_resource(OrganizationDashboardResource, "/organization/dashboard")
 api.add_resource(PasswordResetResource, "/forgot-password")
