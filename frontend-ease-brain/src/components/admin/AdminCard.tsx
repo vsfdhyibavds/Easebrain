@@ -53,4 +53,5 @@ const AdminCard: FC<AdminCardProps> = ({
   );
 };
 
+export { AdminCard };
 export default AdminCard;
