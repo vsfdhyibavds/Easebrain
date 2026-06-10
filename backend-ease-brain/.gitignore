@@ -27,6 +27,11 @@ dist
 dist-ssr
 *.local
 
+# Frontend build output (symlinked from frontend-ease-brain/dist)
+# Note: public/ is committed when backend serves frontend
+# Uncomment if you want to exclude it from git:
+# public/
+
 # Environment variables
 .env
 .env.local

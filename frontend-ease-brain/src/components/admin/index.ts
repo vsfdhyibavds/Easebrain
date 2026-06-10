@@ -10,6 +10,7 @@ export { default as DeleteDependentModal } from "./DeleteDependentModal";
 export { default as TimeRangeFilter } from "./TimeRangeFilter";
 export { default as TrendIndicator } from "./TrendIndicator";
 export { default as DashboardCharts } from "./DashboardCharts";
+export { default as NotificationMonitoringDashboard } from "./NotificationMonitoringDashboard";
 
 export type { AdminCardProps } from "./AdminCard";
 export type { AdminTableProps, Column } from "./AdminTable";

@@ -415,36 +415,6 @@ class NotificationService:
                 return False
 
         except Exception as e:
-            delivery_time = (time.time() - start_time) * 1000
-            log_notification_failure(
-                NotificationType.CRISIS_ALERT,
-                connection.caregiver_id if connection else 0,
-                connection.caregiver.email if connection and connection.caregiver else "unknown",
-                str(e),
-                type(e).__name__,
-                {"connection_id": connection_id, "delivery_time_ms": delivery_time}
-            )
-            logger.error(f"Error sending crisis notification: {str(e)}", exc_info=True)
-            return False
-                patient=patient,
-                crisis_description=crisis_description,
-                patient_notes=patient_notes,
-                connection=connection,
-            )
-
-            if success:
-                logger.info(
-                    f"Crisis notification sent to {caregiver.email} "
-                    f"for patient {patient.username}"
-                )
-                return True
-            else:
-                logger.warning(
-                    f"Failed to send crisis notification to {caregiver.email}"
-                )
-                return False
-
-        except Exception as e:
             logger.error(f"Error sending crisis notification: {str(e)}", exc_info=True)
             return False
 

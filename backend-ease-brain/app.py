@@ -89,6 +89,7 @@ from utils.jwt_blacklist import init_token_blacklist
 from utils.security_headers import init_security_headers
 from utils.health_check import health_bp
 from utils.swagger_docs import swagger_bp
+from utils.notification_alert_system import start_notification_monitoring
 from utils.error_responses import (
     APIError,
     handle_api_error,
@@ -255,6 +256,13 @@ init_token_blacklist(app)
 
 # Initialize security headers (CSP, HSTS, X-Frame-Options, etc.)
 init_security_headers(app)
+
+# Initialize notification alert system (monitors failures and sends alerts)
+try:
+    start_notification_monitoring()
+    logger.info("✅ Notification alert monitoring system started")
+except Exception as e:
+    logger.error(f"Failed to start notification alert system: {str(e)}")
 
 # Log environment variables for email configuration on startup
 logger.info("=" * 60)

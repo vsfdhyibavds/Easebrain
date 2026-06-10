@@ -63,6 +63,7 @@ import AdminDependents from "../pages/AdminDependents";
 import AdminTasks from "../pages/AdminTasks";
 import AdminAuditLog from "../pages/AdminAuditLog";
 import AdminDashboardEnhanced from "../pages/AdminDashboardEnhanced";
+import AdminNotificationMonitoring from "../pages/AdminNotificationMonitoring";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const routes = createBrowserRouter([
@@ -180,6 +181,7 @@ const routes = createBrowserRouter([
       { path: "settings", element: <AdminSettings /> },
       { path: "timeline", element: <AdminTimeline /> },
       { path: "audit-log", element: <AdminAuditLog /> },
+      { path: "notifications", element: <AdminNotificationMonitoring /> },
     ],
   },
   // Public routes are now nested under the AppLayout above.

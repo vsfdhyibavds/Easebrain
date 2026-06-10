@@ -1,14 +1,33 @@
 services:
-  # Python Flask Backend API
+  # Unified Flask Backend + React Frontend
   - type: web
-    name: easebrain-backend
-    rootDir: backend-ease-brain
+    name: easebrain
     env: python
     region: oregon
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    preDeployCommand: flask db upgrade && python seed_roles.py
-    startCommand: ./startup.sh
+    plan: standard
+
+    buildCommand: |
+      echo "📦 Building frontend..."
+      cd frontend-ease-brain
+      npm install --production=false
+      npm run build
+
+      echo "📁 Copying frontend to backend public folder..."
+      cd ../backend-ease-brain
+      mkdir -p public
+      rm -rf public/*
+      cp -r ../frontend-ease-brain/dist/* public/
+
+      echo "📦 Installing backend dependencies..."
+      pip install -r requirements.txt
+
+    preDeployCommand: cd backend-ease-brain && flask db upgrade && python seed_roles.py
+
+    startCommand: cd backend-ease-brain && gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --access-logfile - --error-logfile -
+
+    healthCheckPath: /api/health
+    healthCheckTimeout: 30
+
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
@@ -16,6 +35,10 @@ services:
         value: app.py
       - key: FLASK_ENV
         value: production
+      - key: NODE_ENV
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: 1
       - key: DATABASE_URL
         fromDatabase:
           name: easebrain-db
@@ -33,19 +56,7 @@ services:
       - key: VERIFY_BASE_URL
         value: https://www.easebrain.live/verify
       - key: WEB_CONCURRENCY
-        value: "2"
-    healthCheckPath: /api/health
-
-  # React Frontend (Static Site)
-  - type: web
-    name: easebrain-frontend
-    rootDir: frontend-ease-brain
-    env: static
-    buildCommand: npm install --production=false && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_BASE_URL
-        value: https://easebrain-backend.onrender.com/api
+        value: "4"
 
 databases:
   - name: easebrain-db
