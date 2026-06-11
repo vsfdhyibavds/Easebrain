@@ -32,7 +32,7 @@ class CSRFProtector:
         app.logger.info("✅ CSRF Protection initialized")
 
     def _before_request(self):
-        """Generate CSRF token for use in forms"""
+        """Generate CSRF token and validate on state-changing requests"""
         # Generate token if not in session
         if "csrf_token" not in session:
             session["csrf_token"] = self._generate_token()
@@ -41,6 +41,40 @@ class CSRFProtector:
 
         # Store in g for easy access in templates/code
         g.csrf_token = session.get("csrf_token")
+
+        # Enforce CSRF validation for state-changing requests
+        if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+            # Skip validation for exempt endpoints (e.g., /api/health)
+            if getattr(request.endpoint, "csrf_exempt", False):
+                return
+
+            # Get token from multiple possible sources
+            token = (
+                request.headers.get("X-CSRF-Token")
+                or request.headers.get("X-CSRFToken")
+                or request.form.get("csrf_token")
+            )
+
+            # Try to get from JSON body if not in headers/form
+            if not token and request.is_json:
+                try:
+                    data = request.get_json(silent=True)
+                    if data:
+                        token = data.get("csrf_token")
+                except Exception:
+                    pass
+
+            # Validate token
+            if not token or not self.validate_token(token):
+                return (
+                    jsonify(
+                        {
+                            "message": "CSRF token validation failed. Please refresh and try again.",
+                            "error": "csrf_validation_failed",
+                        }
+                    ),
+                    403,
+                )
 
     @staticmethod
     def _generate_token():

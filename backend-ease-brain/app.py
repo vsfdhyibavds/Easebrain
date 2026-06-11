@@ -414,6 +414,11 @@ app.register_blueprint(
     swagger_bp, url_prefix="/api"
 )  # /api/docs, /api/openapi.json, /api/error-codes
 
+# Exempt health check endpoint from rate limiting
+from utils.rate_limiter import limiter
+
+limiter.exempt(app.view_functions.get("health.health_check"))
+
 
 @app.route("/verify/<token>", methods=["GET"])
 def verify_token_simple(token):
@@ -756,9 +761,8 @@ import os
 from flask import send_from_directory
 
 # Determine the frontend build directory
-frontend_build_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "frontend-ease-brain", "dist"
-)
+# render.yaml copies the built frontend to backend-ease-brain/public/
+frontend_build_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public")
 
 
 @app.route("/", defaults={"path": ""})
