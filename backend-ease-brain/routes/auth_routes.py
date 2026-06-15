@@ -15,6 +15,7 @@ from utils.rate_limiter import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from utils.csrf_protection import csrf_exempt
 
 auth_bp = Blueprint("auth", __name__)
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ def get_request_json():
         return None
 
 
+@csrf_exempt
 # ✅ Signup Route
 @auth_bp.route("/signup", methods=["POST"])
 @limiter.limit(SIGNUP_LIMITER)
@@ -108,6 +110,7 @@ def signup():
         ), 500
 
 
+@csrf_exempt
 # ✅ Login Route
 @auth_bp.route("/login", methods=["POST", "OPTIONS"])
 @limiter.limit(LOGIN_LIMITER, methods=["POST"])
@@ -272,6 +275,7 @@ def check_verification():
         ), 500
 
 
+@csrf_exempt
 # ✅ Resend Verification Email
 @auth_bp.route("/resend-email-verification", methods=["POST"])
 def resend_verification():

@@ -10,13 +10,13 @@ const DarkModeContext = createContext<DarkModeContextType | undefined>(undefined
 
 export const DarkModeProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [isDarkMode, setIsDarkModeState] = useState<boolean>(() => {
-    // Check localStorage first
+    // Check localStorage first (explicit user preference takes priority)
     const saved = localStorage.getItem("darkMode");
     if (saved !== null) {
       return JSON.parse(saved);
     }
-    // Check system preference
-    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // Default to light mode (not system preference)
+    return false;
   });
 
   // Update DOM and localStorage when dark mode changes
@@ -27,11 +27,15 @@ export const DarkModeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     } else {
       html.classList.remove("dark");
     }
+    // Always save explicit preference to localStorage
     localStorage.setItem("darkMode", JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
   const toggleDarkMode = () => {
-    setIsDarkModeState((prev) => !prev);
+    setIsDarkModeState((prev) => {
+      const newValue = !prev;
+      return newValue;
+    });
   };
 
   const setDarkMode = (isDark: boolean) => {

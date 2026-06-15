@@ -44,8 +44,9 @@ class CSRFProtector:
 
         # Enforce CSRF validation for state-changing requests
         if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
-            # Skip validation for exempt endpoints (e.g., /api/health)
-            if getattr(request.endpoint, "csrf_exempt", False):
+            # Skip validation for exempt endpoints (e.g., /api/health, auth endpoints, /api/health)
+            endpoint = request.endpoint or ""
+            if getattr(request.endpoint, "csrf_exempt", False) or endpoint.endswith("loginresource") or endpoint.endswith("signupresource") or endpoint.endswith("resendverificationemailresource") or endpoint.endswith("passwordresetresource") or endpoint.endswith("passwordresetconfirmresource") or endpoint.endswith("emailverificationresource"):
                 return
 
             # Get token from multiple possible sources
