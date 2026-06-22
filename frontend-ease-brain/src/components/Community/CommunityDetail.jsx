@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useGetCommunityQuery, useGetCommunityPostsQuery } from '../../app/communityApi';
+import { useGetCommunityQuery, useGetCommunityPostsQuery, useJoinCommunityMutation, useGetCommunityMembersQuery } from '../../app/communityApi';
 import PostCard from './PostCard';
 import PostCreationForm from './PostCreationForm';
 import ModerationDashboard from './Moderation/ModerationDashboard';
@@ -18,10 +18,26 @@ export default function CommunityDetail({ communityId, currentUserId, onBack, on
     page: currentPage,
     perPage: 20,
   });
+  const { data: membersData } = useGetCommunityMembersQuery(communityId);
+  const [joinCommunity, { isLoading: isJoining, error: joinError }] = useJoinCommunityMutation();
+
+  // Check if current user is a member
+  const members = membersData || [];
+  const isMember = Array.isArray(members) && members.some(m => m.user_id === currentUserId);
 
   const community = communityData?.community || {};
   const posts = postsData?.posts || [];
   const pagination = postsData?.pagination || {};
+
+  const handleJoin = async () => {
+    try {
+      await joinCommunity(communityId).unwrap();
+      // Refresh members list
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to join community:', err);
+    }
+  };
 
   const getColorClass = (color) => {
     const colorMap = {
@@ -89,15 +105,32 @@ export default function CommunityDetail({ communityId, currentUserId, onBack, on
             </div>
           </div>
 
-          {/* Moderation Button (if moderator) */}
-          {community.moderators?.some((mod) => mod.id === currentUserId) && (
-            <button
-              onClick={() => setShowModeration(true)}
-              className="bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap h-fit"
-            >
-              👮 Moderate
-            </button>
-          )}
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-3 items-end">
+            {/* Join Button (if not a member) */}
+            {!isMember && (
+              <button
+                onClick={handleJoin}
+                disabled={isJoining}
+                className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors whitespace-nowrap"
+              >
+                {isJoining ? '⏳ Joining...' : '✅ Join Community'}
+              </button>
+            )}
+            {joinError && (
+              <p className="text-red-600 text-sm">{joinError?.data?.message || 'Failed to join'}</p>
+            )}
+
+            {/* Moderation Button (if moderator) */}
+            {community.moderators?.some((mod) => mod.id === currentUserId) && (
+              <button
+                onClick={() => setShowModeration(true)}
+                className="bg-teal-600 hover:bg-teal-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap h-fit"
+              >
+                👮 Moderate
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Crisis Hotline */}

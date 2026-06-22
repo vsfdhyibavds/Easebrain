@@ -36,6 +36,14 @@ export const communityApi = baseApi.injectEndpoints({
       providesTags: (result, error, communityId) => [{ type: 'ModeratorStatus', id: communityId }],
     }),
 
+    joinCommunity: builder.mutation({
+      query: (communityId) => ({
+        url: `/community/${communityId}/join`,
+        method: 'POST',
+      }),
+      invalidatesTags: (result, error, communityId) => [{ type: 'UserCommunity', id: communityId }],
+    }),
+
     // Community Posts
     getCommunityPosts: builder.query({
       query: ({ communityId, page = 1, perPage = 20, sort = 'recent' } = {}) => {
@@ -164,4 +172,5 @@ export const {
   useReportPostMutation,
   useApprovePostMutation,
   useRejectPostMutation,
+  useJoinCommunityMutation,
 } = communityApi;
