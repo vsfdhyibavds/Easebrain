@@ -21,5 +21,9 @@ class UserCommunity(db.Model):
     suspension_reason = db.Column(db.Text, nullable=True)
     ban_reason = db.Column(db.Text, nullable=True)
 
-    user = db.relationship("User", back_populates="user_communities")
+    # Accountability: which moderator took the action
+    moderated_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    user = db.relationship("User", foreign_keys=[user_id], back_populates="user_communities")
     community = db.relationship("Community", back_populates="user_communities")
+    moderator = db.relationship("User", foreign_keys=[moderated_by])

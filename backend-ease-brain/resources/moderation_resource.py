@@ -314,6 +314,7 @@ def suspend_user(target_user_id):
         user_community.status = "suspended"
         user_community.suspended_at = datetime.utcnow()
         user_community.suspension_reason = reason
+        user_community.moderated_by = user_id
 
         db.session.commit()
 
@@ -356,6 +357,7 @@ def ban_user(target_user_id):
         user_community.status = "banned"
         user_community.banned_at = datetime.utcnow()
         user_community.ban_reason = reason
+        user_community.moderated_by = user_id
 
         db.session.commit()
 
@@ -399,6 +401,7 @@ def restore_user(target_user_id):
         user_community.banned_at = None
         user_community.suspension_reason = None
         user_community.ban_reason = None
+        user_community.moderated_by = user_id  # record who restored access
 
         db.session.commit()
 
@@ -481,11 +484,14 @@ def get_moderation_logs(community_id):
                 reason = uc.ban_reason
 
             if filter_action == "all" or filter_action == action:
+                moderator_name = "Unknown"
+                if uc.moderator:
+                    moderator_name = uc.moderator.username
                 logs.append(
                     {
                         "id": f"user_{uc.user_id}",
                         "timestamp": timestamp.isoformat() if timestamp else None,
-                        "moderator_name": "Admin",  # Would need to track moderator who took action
+                        "moderator_name": moderator_name,
                         "action": action,
                         "target_type": "user",
                         "target_title": uc.user.username,

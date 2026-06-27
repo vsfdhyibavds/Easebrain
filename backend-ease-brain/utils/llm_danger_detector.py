@@ -350,19 +350,15 @@ Be conservative - only flag as critical if there's clear, immediate danger."""
         }
 
 
-# Singleton instance
-_llm_detector_instance = None
-
-
 def get_llm_detector(
     provider: Optional[str] = None,
     model: Optional[str] = None,
     api_key: Optional[str] = None,
 ) -> LLMDangerDetector:
-    """Factory function to get or create LLM detector instance"""
-    global _llm_detector_instance
-    if _llm_detector_instance is None:
-        _llm_detector_instance = LLMDangerDetector(
-            provider=provider, model=model, api_key=api_key
-        )
-    return _llm_detector_instance
+    """Factory that returns a new LLMDangerDetector instance per call.
+
+    Mirrors get_detector() — no global singleton.  The LLMDangerDetector reads
+    its config from environment variables on construction, so creating a new
+    instance is fast and avoids cross-worker state issues under Gunicorn.
+    """
+    return LLMDangerDetector(provider=provider, model=model, api_key=api_key)
