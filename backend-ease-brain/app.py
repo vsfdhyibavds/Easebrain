@@ -78,8 +78,8 @@ from resources.caregiver_connection_resource import caregiver_connection_bp
 from resources.community_resource import community_bp
 from resources.moderation_resource import moderation_bp
 from resources.safety_plan_resource import safety_plan_bp
+from resources.settings_resource import settings_bp
 from models.user import User
-from models.settings import UserSettings
 from models.reminder import Reminder
 from models.message import Message
 from utils.audit_logger import configure_audit_logging
@@ -168,6 +168,8 @@ logger = logging.getLogger(__name__)
 @app.route("/api/update-email", methods=["POST"])
 @jwt_required()
 def update_email():
+    from werkzeug.security import check_password_hash
+
     data = request.get_json()
     new_email = data.get("email")
     password = data.get("password")
@@ -179,16 +181,10 @@ def update_email():
     user = User.query.get(user_id)
     if not user:
         return jsonify({"message": "User not found."}), 404
-    # password hashing uses werkzeug.security.generate_password_hash -> stored in user.password_hash
-    try:
-        from werkzeug.security import check_password_hash
-
-        if not check_password_hash(user.password_hash, password):
-            return jsonify({"message": "Incorrect password."}), 401
-    except Exception:
-        # Fallback in case Bcrypt was used elsewhere
-        if not bcrypt.check_password_hash(user.password_hash, password):
-            return jsonify({"message": "Incorrect password."}), 401
+    # All passwords are hashed with werkzeug.security.generate_password_hash (pbkdf2:sha256).
+    # The bcrypt fallback was left over from a mid-project migration and is removed.
+    if not check_password_hash(user.password_hash, password):
+        return jsonify({"message": "Incorrect password."}), 401
     if User.query.filter_by(email=new_email).first():
         return jsonify({"message": "Email already in use."}), 409
     user.email = new_email
@@ -407,12 +403,18 @@ app.register_blueprint(caregiver_connection_bp, url_prefix="/api")  # /api/careg
 app.register_blueprint(community_bp, url_prefix="/api/community")  # /api/community
 app.register_blueprint(moderation_bp, url_prefix="/api")  # /api/moderation
 app.register_blueprint(safety_plan_bp, url_prefix="/api")  # /api/safety-plans
+app.register_blueprint(settings_bp, url_prefix="/api")  # /api/settings
 app.register_blueprint(
     health_bp, url_prefix="/api"
 )  # /api/health and /api/health/detailed
 app.register_blueprint(
     swagger_bp, url_prefix="/api"
 )  # /api/docs, /api/openapi.json, /api/error-codes
+
+# Exempt health check endpoint from rate limiting
+from utils.rate_limiter import limiter
+
+limiter.exempt(app.view_functions.get("health.health_check"))
 
 
 @app.route("/verify/<token>", methods=["GET"])
@@ -445,185 +447,7 @@ def verify_token_simple(token):
     )
 
 
-# --- BEGIN: User Settings Endpoints ---
-
-
-@app.route("/api/settings", methods=["GET"])
-@jwt_required()
-def get_settings():
-    """
-    Get current user's settings from database.
-    Requires JWT authentication.
-    """
-    try:
-        user_id = get_jwt_identity()
-        user = db.session.query(User).filter_by(id=user_id).first()
-
-        if not user:
-            return jsonify({"message": "User not found"}), 404
-
-        # Get or create user settings
-        settings = db.session.query(UserSettings).filter_by(user_id=user_id).first()
-
-        if not settings:
-            # Create default settings if they don't exist
-            settings = UserSettings(user_id=user_id)
-            db.session.add(settings)
-            db.session.commit()
-
-        # Build response with user data and settings
-        response_data = {
-            "id": user.id,
-            "name": settings.name
-            or f"{user.first_name} {user.last_name}".strip()
-            or user.username,
-            "email": user.email,
-            "phone": settings.phone or user.phone_number or "",
-            "timezone": settings.timezone or "UTC",
-            "theme": settings.theme or "light",
-            "notifications": {
-                "email": settings.email_notifications,
-                "sms": settings.sms_notifications,
-                "push": settings.push_notifications,
-            },
-        }
-
-        return jsonify(response_data), 200
-
-    except Exception as e:
-        logger.error(f"Error fetching settings: {str(e)}")
-        return jsonify({"message": "Failed to fetch settings"}), 500
-
-
-@app.route("/api/settings/profile", methods=["PUT"])
-@jwt_required()
-def update_profile():
-    """
-    Update user profile settings in database.
-    Requires JWT authentication.
-    Updates: name, phone, timezone
-    """
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
-
-        if not data:
-            return jsonify({"message": "No data provided"}), 400
-
-        user = db.session.query(User).filter_by(id=user_id).first()
-
-        if not user:
-            return jsonify({"message": "User not found"}), 404
-
-        # Get or create user settings
-        settings = db.session.query(UserSettings).filter_by(user_id=user_id).first()
-
-        if not settings:
-            settings = UserSettings(user_id=user_id)
-            db.session.add(settings)
-
-        # Update allowed fields
-        if "name" in data:
-            settings.name = data["name"]
-
-        if "phone" in data:
-            settings.phone = data["phone"]
-            # Also update user's phone_number if provided
-            user.phone_number = data["phone"]
-
-        if "timezone" in data:
-            settings.timezone = data["timezone"]
-
-        # Update user's name if provided (split into first/last)
-        if "first_name" in data:
-            user.first_name = data["first_name"]
-
-        if "last_name" in data:
-            user.last_name = data["last_name"]
-
-        db.session.commit()
-
-        response_data = {
-            "message": "Profile updated successfully",
-            "data": {
-                "id": user.id,
-                "name": settings.name or f"{user.first_name} {user.last_name}".strip(),
-                "email": user.email,
-                "phone": settings.phone or user.phone_number or "",
-                "timezone": settings.timezone or "UTC",
-            },
-        }
-
-        return jsonify(response_data), 200
-
-    except Exception as e:
-        logger.error(f"Error updating profile: {str(e)}")
-        db.session.rollback()
-        return jsonify({"message": "Failed to update profile"}), 500
-
-
-@app.route("/api/settings/notifications", methods=["PUT"])
-@jwt_required()
-def update_notifications():
-    """
-    Update user notification preferences in database.
-    Requires JWT authentication.
-    Updates: email_notifications, sms_notifications, push_notifications
-    """
-    try:
-        user_id = get_jwt_identity()
-        data = request.get_json()
-
-        if not data:
-            return jsonify({"message": "No data provided"}), 400
-
-        user = db.session.query(User).filter_by(id=user_id).first()
-
-        if not user:
-            return jsonify({"message": "User not found"}), 404
-
-        # Get or create user settings
-        settings = db.session.query(UserSettings).filter_by(user_id=user_id).first()
-
-        if not settings:
-            settings = UserSettings(user_id=user_id)
-            db.session.add(settings)
-
-        # Update notification preferences
-        # Support both "notifications" nested object and flat structure
-        notifications = data.get("notifications", data)
-
-        if "email" in notifications:
-            settings.email_notifications = notifications["email"]
-
-        if "sms" in notifications:
-            settings.sms_notifications = notifications["sms"]
-
-        if "push" in notifications:
-            settings.push_notifications = notifications["push"]
-
-        db.session.commit()
-
-        response_data = {
-            "message": "Notification preferences updated successfully",
-            "data": {
-                "notifications": {
-                    "email": settings.email_notifications,
-                    "sms": settings.sms_notifications,
-                    "push": settings.push_notifications,
-                }
-            },
-        }
-
-        return jsonify(response_data), 200
-
-    except Exception as e:
-        logger.error(f"Error updating notifications: {str(e)}")
-        db.session.rollback()
-        return jsonify({"message": "Failed to update notifications"}), 500
-
-
-# --- END: Sample /api/settings endpoint ---
+# --- END: User Settings Endpoints (moved to resources/settings_resource.py) ---
 
 
 @app.route("/api/stats", methods=["GET"])
@@ -756,9 +580,8 @@ import os
 from flask import send_from_directory
 
 # Determine the frontend build directory
-frontend_build_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "..", "frontend-ease-brain", "dist"
-)
+# render.yaml copies the built frontend to backend-ease-brain/public/
+frontend_build_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public")
 
 
 @app.route("/", defaults={"path": ""})

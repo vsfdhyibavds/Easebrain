@@ -34,6 +34,14 @@ const AdminSettings: FC = () => {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Update local darkMode setting when context changes
+  useEffect(() => {
+    setSettings((prev) => ({
+      ...prev,
+      darkMode: isDarkMode,
+    }));
+  }, [isDarkMode]);
+
   // Load settings on mount
   useEffect(() => {
     const loadSettings = async () => {

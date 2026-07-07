@@ -32,7 +32,7 @@ class CSRFProtector:
         app.logger.info("✅ CSRF Protection initialized")
 
     def _before_request(self):
-        """Generate CSRF token for use in forms"""
+        """Generate CSRF token and validate on state-changing requests"""
         # Generate token if not in session
         if "csrf_token" not in session:
             session["csrf_token"] = self._generate_token()
@@ -41,6 +41,74 @@ class CSRFProtector:
 
         # Store in g for easy access in templates/code
         g.csrf_token = session.get("csrf_token")
+
+        # Enforce CSRF validation for state-changing requests
+        if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+            # Skip validation for exempt endpoints (e.g., /api/health, auth endpoints)
+            endpoint = request.endpoint or ""
+            view_fn = None
+            try:
+                view_fn = request.app.view_functions.get(endpoint)
+            except Exception:
+                view_fn = None
+
+            if (
+                (view_fn is not None and getattr(view_fn, "csrf_exempt", False))
+                or endpoint.endswith("loginresource")
+                or endpoint.endswith("signupresource")
+                or endpoint.endswith("resendverificationemailresource")
+                or endpoint.endswith("passwordresetresource")
+                or endpoint.endswith("passwordresetconfirmresource")
+                or endpoint.endswith("emailverificationresource")
+                or endpoint in ("settings.update_profile", "settings.update_notifications", "settings.update_theme")
+            ):
+                return
+
+            # Debug logging to help diagnose unexpected 403s
+            try:
+                app_logger = self.app.logger if self.app else None
+                if app_logger and app_logger.isEnabledFor(10):  # DEBUG
+                    app_logger.debug(
+                        f"CSRF check: endpoint={endpoint} view_fn={view_fn} csrf_exempt={getattr(view_fn, 'csrf_exempt', False)}"
+                    )
+            except Exception:
+                pass
+
+            # Get token from multiple possible sources
+            token = (
+                request.headers.get("X-CSRF-Token")
+                or request.headers.get("X-CSRFToken")
+                or request.form.get("csrf_token")
+            )
+
+            # Try to get from JSON body if not in headers/form
+            if not token and request.is_json:
+                try:
+                    data = request.get_json(silent=True)
+                    if data:
+                        token = data.get("csrf_token")
+                except Exception:
+                    pass
+
+            # Validate token
+            if not token or not self.validate_token(token):
+                try:
+                    app_logger = self.app.logger if self.app else None
+                    if app_logger and app_logger.isEnabledFor(10):
+                        app_logger.debug(
+                            f"CSRF token missing/invalid. token_present={bool(token)} stored_token_present={bool(session.get('csrf_token'))}"
+                        )
+                except Exception:
+                    pass
+                return (
+                    jsonify(
+                        {
+                            "message": "CSRF token validation failed. Please refresh and try again.",
+                            "error": "csrf_validation_failed",
+                        }
+                    ),
+                    403,
+                )
 
     @staticmethod
     def _generate_token():

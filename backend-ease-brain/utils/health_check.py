@@ -15,8 +15,13 @@ def health_check():
     """
     Health check endpoint - extremely lightweight for Render monitoring.
     Returns immediately without dependency checks to avoid startup delays.
+    Exempted from rate limiting and CSRF to prevent boot loops.
     """
     return jsonify({"status": "healthy"}), 200
+
+
+# Mark as exempt from rate limiting and CSRF
+health_check.csrf_exempt = True
 
 
 @health_bp.route("/health/detailed", methods=["GET"])

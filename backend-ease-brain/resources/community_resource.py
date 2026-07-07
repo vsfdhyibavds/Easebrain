@@ -7,6 +7,7 @@ from models import (
     CommunityReply,
     CommunityReport,
     User,
+    UserCommunity,
 )
 from sqlalchemy import or_
 import logging
@@ -613,3 +614,47 @@ def get_flagged_posts(community_id):
             f"Error fetching flagged posts for community {community_id}: {str(e)}"
         )
         return jsonify({"error": "Failed to fetch flagged posts"}), 500
+
+
+@community_bp.route("/<int:community_id>/join", methods=["POST"])
+@jwt_required()
+def join_community(community_id):
+    """Join a community - create UserCommunity record for current user"""
+    try:
+        user_id = get_jwt_identity()
+        community = Community.query.get_or_404(community_id)
+
+        # Check if user is already a member
+        existing = UserCommunity.query.filter_by(
+            user_id=user_id, community_id=community_id
+        ).first()
+
+        if existing:
+            return (
+                jsonify({"message": "User is already a member of this community"}),
+                400,
+            )
+
+        # Create new membership record
+        user_community = UserCommunity(
+            user_id=user_id, community_id=community_id, status="active"
+        )
+        db.session.add(user_community)
+        db.session.commit()
+
+        logger.info(f"User {user_id} joined community {community_id}")
+
+        return (
+            jsonify(
+                {
+                    "message": f"Successfully joined {community.name}",
+                    "user_community_id": user_community.id,
+                    "community_id": community_id,
+                }
+            ),
+            201,
+        )
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error joining community: {str(e)}")
+        return jsonify({"error": "Failed to join community"}), 500

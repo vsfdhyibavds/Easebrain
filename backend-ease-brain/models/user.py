@@ -46,7 +46,10 @@ class User(db.Model, SerializerMixin):
         "CaregiverNote", back_populates="user", foreign_keys="CaregiverNote.user_id"
     )
     user_communities = db.relationship(
-        "UserCommunity", back_populates="user", cascade="all, delete"
+        "UserCommunity",
+        back_populates="user",
+        cascade="all, delete",
+        foreign_keys="UserCommunity.user_id",
     )
     conversations_as_user1 = db.relationship(
         "Conversation", back_populates="user1", foreign_keys="Conversation.user1_id"

@@ -372,15 +372,16 @@ class DangerDetector:
         }
 
 
-# Singleton instance for convenience
-_detector_instance = None
-
-
 def get_detector(
     custom_rules: Optional[Dict] = None, verbose: bool = False
 ) -> DangerDetector:
-    """Factory function to get or create detector instance"""
-    global _detector_instance
-    if _detector_instance is None:
-        _detector_instance = DangerDetector(custom_rules=custom_rules, verbose=verbose)
-    return _detector_instance
+    """Factory that returns a new DangerDetector instance per call.
+
+    The detector is stateless (compiled patterns are derived purely from the
+    rules passed in), so creating a new instance is cheap and avoids the
+    global-singleton problem under Gunicorn multi-worker deployments where
+    per-process state is not shared between workers.  Callers that need a
+    long-lived instance for performance reasons should cache the result
+    themselves within their own request/app context.
+    """
+    return DangerDetector(custom_rules=custom_rules, verbose=verbose)

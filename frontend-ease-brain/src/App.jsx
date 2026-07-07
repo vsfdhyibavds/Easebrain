@@ -4,10 +4,18 @@ import Footer from '@/components/Footer';
 import ErrorBoundaryClass from '@/components/ErrorBoundaryClass';
 
 function App() {
-  // Initialize theme from localStorage
+  // Initialize theme from DarkModeContext via localStorage
+  // Default to light mode (not system preference)
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "light";
-    if (savedTheme === "dark") {
+    const saved = localStorage.getItem("darkMode");
+    let isDarkMode = false; // Default to light mode
+
+    if (saved !== null) {
+      // If explicitly set in localStorage, use that value
+      isDarkMode = JSON.parse(saved);
+    }
+
+    if (isDarkMode) {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");

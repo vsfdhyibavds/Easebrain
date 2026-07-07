@@ -203,19 +203,18 @@ Be conservative - only flag as critical if there's clear, immediate danger."""
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
 
     async def _call_openai(self, text: str) -> tuple:
-        """Call OpenAI API (requires openai package)"""
+        """Call OpenAI API (requires openai package v1.0.0+)"""
         try:
-            import openai  # type: ignore
-
-            openai.api_key = self.api_key
+            from openai import AsyncOpenAI
         except ImportError:
             raise ImportError(
-                "openai package required for OpenAI provider. Install with: pip install openai"
+                "openai package required for OpenAI provider. Install with: pip install openai>=1.0.0"
             )
 
         try:
-            response = await asyncio.to_thread(
-                openai.ChatCompletion.create,
+            client = AsyncOpenAI(api_key=self.api_key)
+
+            response = await client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
@@ -351,19 +350,15 @@ Be conservative - only flag as critical if there's clear, immediate danger."""
         }
 
 
-# Singleton instance
-_llm_detector_instance = None
-
-
 def get_llm_detector(
     provider: Optional[str] = None,
     model: Optional[str] = None,
     api_key: Optional[str] = None,
 ) -> LLMDangerDetector:
-    """Factory function to get or create LLM detector instance"""
-    global _llm_detector_instance
-    if _llm_detector_instance is None:
-        _llm_detector_instance = LLMDangerDetector(
-            provider=provider, model=model, api_key=api_key
-        )
-    return _llm_detector_instance
+    """Factory that returns a new LLMDangerDetector instance per call.
+
+    Mirrors get_detector() — no global singleton.  The LLMDangerDetector reads
+    its config from environment variables on construction, so creating a new
+    instance is fast and avoids cross-worker state issues under Gunicorn.
+    """
+    return LLMDangerDetector(provider=provider, model=model, api_key=api_key)
