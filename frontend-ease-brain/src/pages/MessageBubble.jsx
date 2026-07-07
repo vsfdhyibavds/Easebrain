@@ -1,4 +1,7 @@
 export function MessageBubble({ msg, isOwn }) {
+  const messageText = msg.content || msg.message;
+  const isRead = msg.is_read !== undefined ? msg.is_read : msg.read;
+
   return (
     <div
       className={`max-w-[70%] px-4 py-2 rounded-xl text-sm shadow
@@ -16,12 +19,13 @@ export function MessageBubble({ msg, isOwn }) {
           📎 View attachment
         </a>
       ) : (
-        <p>{msg.message}</p>
+        <p>{messageText}</p>
       )}
 
       <div className="flex justify-end text-[10px] opacity-70 mt-1">
-        {msg.read ? "✓✓ Read" : "✓ Sent"}
+        {isRead ? "✓✓ Read" : "✓ Sent"}
       </div>
     </div>
   );
 }
+
