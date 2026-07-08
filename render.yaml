@@ -7,18 +7,10 @@ services:
     plan: free
 
     buildCommand: |
-      echo "📦 Building frontend..."
+      echo "📦 Building frontend (outputs directly to backend-ease-brain/public)..."
       cd frontend-ease-brain && npm install --production=false && npm run build && cd ..
 
-      echo "✅ Frontend build complete. Checking dist output..."
-      ls frontend-ease-brain/dist/
-
-      echo "📁 Copying frontend build to backend public folder..."
-      mkdir -p backend-ease-brain/public
-      rm -rf backend-ease-brain/public/*
-      cp -r frontend-ease-brain/dist/. backend-ease-brain/public/
-
-      echo "✅ Frontend files copied. Verifying..."
+      echo "✅ Verifying frontend build landed in backend public folder..."
       ls backend-ease-brain/public/
 
       echo "📦 Installing backend dependencies..."
