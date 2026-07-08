@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { BASE_URL } from '../config/apiConfig';
 import Footer from '@/components/Footer';
-import { FaSearch, FaPaperPlane, FaPlus, FaCircle, FaClock, FaTrash, FaHome, FaBook, FaCalendarAlt, FaCommentAlt, FaUsers, FaCog, FaArrowLeft, FaComments, FaCheck } from 'react-icons/fa';
+import { FaSearch, FaPaperPlane, FaPlus, FaCircle, FaClock, FaTrash, FaHome, FaBook, FaCalendarAlt, FaCommentAlt, FaUsers, FaCog, FaArrowLeft, FaCheck, FaCheckDouble } from 'react-icons/fa';
 
 const sidebarLinks = [
   { icon: <FaHome />, label: 'Dashboard', to: '/easebrain/dashboard' },
@@ -40,6 +40,22 @@ export default function Messages() {
   const location = useLocation();
   const navigate = useNavigate();
   const conversationCacheRef = React.useRef(null); // Store conversations to avoid re-fetching
+  const typingTimerRef = React.useRef(null);
+
+  const updateMessagesForConversation = (conversationId, updater) => {
+    setMessageCache(prev => {
+      const previousMessages = prev[conversationId] || [];
+      const nextMessages = typeof updater === 'function' ? updater(previousMessages) : updater;
+      return {
+        ...prev,
+        [conversationId]: nextMessages,
+      };
+    });
+
+    if (selectedConversation?.id === conversationId) {
+      setCurrentMessages(prev => (typeof updater === 'function' ? updater(prev) : updater));
+    }
+  };
 
   // Load conversations
   useEffect(() => {
@@ -80,9 +96,9 @@ export default function Messages() {
   }, [navigate]);
 
   // Load messages for selected conversation with pagination
-  const loadMessages = async (conversationId, page = 1) => {
+  const loadMessages = async (conversationId, page = 1, options = {}) => {
     try {
-      if (page === 1 && messageCache[conversationId]) {
+      if (!options.force && page === 1 && messageCache[conversationId]) {
         setCurrentMessages(messageCache[conversationId]);
         return;
       }
@@ -132,7 +148,9 @@ export default function Messages() {
         }
       );
       if (resp.status === 204) {
-        setCurrentMessages(currentMessages.filter((m) => m.id !== messageId));
+        updateMessagesForConversation(selectedConversation.id, messages =>
+          messages.filter((m) => m.id !== messageId)
+        );
         setFeedbackMessage('Message deleted');
         setTimeout(() => setFeedbackMessage(''), 1500);
       } else {
@@ -193,8 +211,8 @@ export default function Messages() {
 
       if (resp.ok) {
         const updated = await resp.json();
-        setCurrentMessages(
-          currentMessages.map((m) =>
+        updateMessagesForConversation(selectedConversation.id, messages =>
+          messages.map((m) =>
             m.id === messageId
               ? {
                   ...m,
@@ -238,10 +256,11 @@ export default function Messages() {
 
       if (response.ok) {
         const newMessage = await response.json();
-        setCurrentMessages([...currentMessages, newMessage]);
+        updateMessagesForConversation(selectedConversation.id, messages => [...messages, newMessage]);
         setMessageInput('');
         setFeedbackMessage('Message sent! ✓');
         setTimeout(() => setFeedbackMessage(''), 2000);
+        loadConversations(true);
       } else {
         console.error('Error sending message:', response.status);
       }
@@ -284,9 +303,32 @@ export default function Messages() {
     }
   };
 
+  const loadConversations = async (force = false) => {
+    try {
+      if (!force && conversationCacheRef.current) {
+        setConversations(conversationCacheRef.current);
+        return;
+      }
+
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${BASE_URL}/conversations`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        conversationCacheRef.current = data;
+        setConversations(data || []);
+      }
+    } catch (error) {
+      console.error('Error refreshing conversations:', error);
+    }
+  };
+
   const filteredConversations = conversations.filter(conv =>
     conv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conv.email.toLowerCase().includes(searchQuery.toLowerCase())
+    conv.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (conv.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Poll for typing status
@@ -331,18 +373,16 @@ export default function Messages() {
 
   const handleMessageInputChange = (e) => {
     setMessageInput(e.target.value);
-    sendTypingStatus();
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(sendTypingStatus, 250);
   };
 
-  const markMessageAsRead = async (messageId, messageStatus) => {
-    // Only mark messages with 'delivered' status as 'read'
-    if (messageStatus !== 'delivered') return;
-
-    if (!selectedConversation) return;
+  const markMessageAsRead = async (messageId, messageStatus, conversationId = selectedConversation?.id) => {
+    if (!conversationId || messageStatus === 'read') return;
     try {
       const token = localStorage.getItem('access_token');
       const resp = await fetch(
-        `${BASE_URL}/conversations/${selectedConversation.id}/messages/${messageId}`,
+        `${BASE_URL}/conversations/${conversationId}/messages/${messageId}`,
         {
           method: 'PATCH',
           headers: { 'Authorization': `Bearer ${token}` },
@@ -351,8 +391,8 @@ export default function Messages() {
 
       if (resp.ok) {
         const updated = await resp.json();
-        setCurrentMessages(
-          currentMessages.map((m) =>
+        updateMessagesForConversation(conversationId, messages =>
+          messages.map((m) =>
             m.id === messageId
               ? {
                   ...m,
@@ -362,11 +402,24 @@ export default function Messages() {
               : m
           )
         );
+        loadConversations(true);
       }
     } catch (error) {
       console.error('Error marking message as read:', error);
     }
   };
+
+  React.useEffect(() => {
+    if (!selectedConversation) return;
+
+    const unreadIncoming = currentMessages.filter(
+      (msg) => !msg.isOwn && !msg.is_read && msg.message_status !== 'read'
+    );
+
+    unreadIncoming.forEach((msg) => {
+      markMessageAsRead(msg.id, msg.message_status, selectedConversation.id);
+    });
+  }, [currentMessages, selectedConversation]);
 
   const emojis = ['❤️', '👍', '😂', '😮', '😭', '🔥', '✨', '👏', '🎉', '🙏'];
 
@@ -387,8 +440,7 @@ export default function Messages() {
       );
 
       if (resp.ok || resp.status === 201 || resp.status === 409) {
-        // Reload messages to get updated reactions
-        loadMessages(selectedConversation.id);
+        loadMessages(selectedConversation.id, messagesPage, { force: true });
         setEmojiPickerOpen(null);
       }
     } catch (error) {
@@ -409,8 +461,7 @@ export default function Messages() {
       );
 
       if (resp.status === 204) {
-        // Reload messages to get updated reactions
-        loadMessages(selectedConversation.id);
+        loadMessages(selectedConversation.id, messagesPage, { force: true });
       }
     } catch (error) {
       console.error('Error removing reaction:', error);
@@ -495,8 +546,8 @@ export default function Messages() {
       );
 
       if (resp.ok) {
-        setCurrentMessages(
-          currentMessages.map(m =>
+        updateMessagesForConversation(selectedConversation.id, messages =>
+          messages.map(m =>
             m.id === messageId ? { ...m, is_pinned: !m.is_pinned } : m
           )
         );
@@ -523,12 +574,56 @@ export default function Messages() {
     return msgTime.toLocaleDateString();
   };
 
+  const getMessageStatusMeta = (status = 'sent') => {
+    if (status === 'read') {
+      return { label: 'Read', icon: <FaCheckDouble size={13} />, className: 'text-sky-300' };
+    }
+    if (status === 'delivered') {
+      return { label: 'Delivered', icon: <FaCheckDouble size={13} />, className: 'text-teal-100' };
+    }
+    if (status === 'pending_review') {
+      return { label: 'Pending review', icon: <FaClock size={12} />, className: 'text-amber-200' };
+    }
+    if (status === 'flagged_danger') {
+      return { label: 'Flagged for review', icon: <FaCircle size={10} />, className: 'text-red-200' };
+    }
+    return { label: 'Sent', icon: <FaCheck size={12} />, className: 'text-teal-100' };
+  };
+
+  const renderHighlightedContent = (content) => {
+    if (!messageSearchQuery.trim()) return content;
+
+    const query = messageSearchQuery.trim();
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const parts = content.split(new RegExp(`(${escapedQuery})`, 'gi'));
+
+    return parts.map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <mark key={`${part}-${index}`} className="rounded bg-yellow-200 px-0.5 text-gray-950">
+          {part}
+        </mark>
+      ) : (
+        part
+      )
+    );
+  };
+
   // Filter messages by search query
   const filteredMessages = messageSearchQuery.trim()
     ? currentMessages.filter((msg) =>
         msg.content.toLowerCase().includes(messageSearchQuery.toLowerCase())
       )
     : currentMessages;
+
+  React.useEffect(() => {
+    if (!selectedConversation) return;
+
+    const interval = setInterval(() => {
+      loadMessages(selectedConversation.id, messagesPage, { force: true });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [selectedConversation, messagesPage]);
 
   return (
     <>
@@ -793,8 +888,9 @@ export default function Messages() {
                     key={msg.id}
                     className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
                   >
+                    <div className={`flex max-w-xs flex-col lg:max-w-md ${msg.isOwn ? 'items-end' : 'items-start'}`}>
                     {editingId === msg.id ? (
-                      <div className="max-w-xs lg:max-w-md bg-white border border-teal-400 rounded-lg p-3">
+                      <div className="w-full bg-white border border-teal-400 rounded-lg p-3">
                         <input
                           type="text"
                           value={editContent}
@@ -822,13 +918,13 @@ export default function Messages() {
                       </div>
                     ) : (
                       <div
-                        className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+                        className={`w-full px-4 py-3 rounded-lg ${
                           msg.isOwn
                             ? 'bg-teal-600 text-white rounded-br-none'
                             : 'bg-white text-gray-900 border border-gray-200 rounded-bl-none'
                         }`}
                       >
-                        <p className="break-words">{msg.content}</p>
+                        <p className="break-words">{renderHighlightedContent(msg.content)}</p>
                         {msg.edited_at && (
                           <p className={`text-xs mt-1 ${msg.isOwn ? 'text-teal-100' : 'text-gray-400'}`}>
                             edited
@@ -841,18 +937,9 @@ export default function Messages() {
                           </p>
                           <div className="flex items-center gap-1">
                             {msg.isOwn && (
-                              <div
-                                className={`flex gap-0.5 ${
-                                  msg.message_status === 'read' ? 'text-blue-400' : 'text-teal-100'
-                                }`}
-                                onClick={() => markMessageAsRead(msg.id, msg.message_status)}
-                                style={{ cursor: msg.message_status === 'delivered' ? 'pointer' : 'default' }}
-                                title={`Status: ${msg.message_status || 'sent'}`}
-                              >
-                                <FaCheck size={12} />
-                                {(msg.message_status === 'delivered' || msg.message_status === 'read') && (
-                                  <FaCheck size={12} />
-                                )}
+                              <div className={`flex items-center gap-1 ${getMessageStatusMeta(msg.message_status).className}`} title={getMessageStatusMeta(msg.message_status).label}>
+                                {getMessageStatusMeta(msg.message_status).icon}
+                                <span className="sr-only">{getMessageStatusMeta(msg.message_status).label}</span>
                               </div>
                             )}
                             {msg.isOwn && (
@@ -946,6 +1033,7 @@ export default function Messages() {
                     >
                       😊 Add reaction
                     </button>
+                    </div>
                   </div>
                 ))
               ) : (

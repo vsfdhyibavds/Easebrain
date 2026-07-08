@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import { FaPaperPlane, FaPaperclip } from "react-icons/fa";
 import { useAuth } from "../features/auth/AuthContext";
 import io from "socket.io-client";
+import { MessageBubble } from "./MessageBubble";
+
 
 // fallback to production backend URL if VITE_SOCKET_URL not set
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://www.easebrain.live";

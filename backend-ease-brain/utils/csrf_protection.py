@@ -44,10 +44,35 @@ class CSRFProtector:
 
         # Enforce CSRF validation for state-changing requests
         if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
-            # Skip validation for exempt endpoints (e.g., /api/health, auth endpoints, /api/health)
+            # Skip validation for exempt endpoints (e.g., /api/health, auth endpoints)
             endpoint = request.endpoint or ""
-            if getattr(request.endpoint, "csrf_exempt", False) or endpoint.endswith("loginresource") or endpoint.endswith("signupresource") or endpoint.endswith("resendverificationemailresource") or endpoint.endswith("passwordresetresource") or endpoint.endswith("passwordresetconfirmresource") or endpoint.endswith("emailverificationresource"):
+            view_fn = None
+            try:
+                view_fn = request.app.view_functions.get(endpoint)
+            except Exception:
+                view_fn = None
+
+            if (
+                (view_fn is not None and getattr(view_fn, "csrf_exempt", False))
+                or endpoint.endswith("loginresource")
+                or endpoint.endswith("signupresource")
+                or endpoint.endswith("resendverificationemailresource")
+                or endpoint.endswith("passwordresetresource")
+                or endpoint.endswith("passwordresetconfirmresource")
+                or endpoint.endswith("emailverificationresource")
+                or endpoint in ("settings.update_profile", "settings.update_notifications", "settings.update_theme")
+            ):
                 return
+
+            # Debug logging to help diagnose unexpected 403s
+            try:
+                app_logger = self.app.logger if self.app else None
+                if app_logger and app_logger.isEnabledFor(10):  # DEBUG
+                    app_logger.debug(
+                        f"CSRF check: endpoint={endpoint} view_fn={view_fn} csrf_exempt={getattr(view_fn, 'csrf_exempt', False)}"
+                    )
+            except Exception:
+                pass
 
             # Get token from multiple possible sources
             token = (
@@ -67,6 +92,14 @@ class CSRFProtector:
 
             # Validate token
             if not token or not self.validate_token(token):
+                try:
+                    app_logger = self.app.logger if self.app else None
+                    if app_logger and app_logger.isEnabledFor(10):
+                        app_logger.debug(
+                            f"CSRF token missing/invalid. token_present={bool(token)} stored_token_present={bool(session.get('csrf_token'))}"
+                        )
+                except Exception:
+                    pass
                 return (
                     jsonify(
                         {
