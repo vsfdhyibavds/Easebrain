@@ -611,7 +611,7 @@ def serve_frontend(path):
     if os.path.isfile(index_path):
         return send_from_directory(frontend_build_path, "index.html")
 
-    # If frontend build doesn't exist, return a helpful message
+    # If frontend build doesn't exist, return API-only message
     logger.warning(
         f"Frontend build not found at {frontend_build_path}. "
         "Run 'npm run build' in frontend-ease-brain directory."
@@ -619,11 +619,13 @@ def serve_frontend(path):
     return (
         jsonify(
             {
-                "message": "Frontend build not found. Please build the frontend.",
+                "message": "EaseBrain API is running. Frontend build not found.",
                 "hint": "Run: cd ../frontend-ease-brain && npm install && npm run build",
+                "api_docs": "/api/docs",
+                "health": "/api/health",
             }
         ),
-        500,
+        200,
     )
 
 

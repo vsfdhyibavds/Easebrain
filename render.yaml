@@ -8,18 +8,22 @@ services:
 
     buildCommand: |
       echo "📦 Building frontend..."
-      cd frontend-ease-brain
-      npm install --production=false
-      npm run build
+      cd frontend-ease-brain && npm install --production=false && npm run build && cd ..
 
-      echo "📁 Copying frontend to backend public folder..."
-      cd ../backend-ease-brain
-      mkdir -p public
-      rm -rf public/*
-      cp -r ../frontend-ease-brain/dist/* public/
+      echo "✅ Frontend build complete. Checking dist output..."
+      ls frontend-ease-brain/dist/
+
+      echo "📁 Copying frontend build to backend public folder..."
+      mkdir -p backend-ease-brain/public
+      rm -rf backend-ease-brain/public/*
+      cp -r frontend-ease-brain/dist/. backend-ease-brain/public/
+
+      echo "✅ Frontend files copied. Verifying..."
+      ls backend-ease-brain/public/
 
       echo "📦 Installing backend dependencies..."
-      pip install -r requirements.txt
+      pip install --upgrade pip
+      pip install -r backend-ease-brain/requirements.txt
 
     preDeployCommand: cd backend-ease-brain && flask db upgrade || true && python seed_roles.py || true
 
@@ -31,6 +35,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
+      - key: NODE_VERSION
+        value: "22.12.0"
       - key: FLASK_APP
         value: app.py
       - key: FLASK_ENV
