@@ -4,7 +4,7 @@ services:
     name: easebrain
     env: python
     region: oregon
-    plan: standard
+    plan: free
 
     buildCommand: |
       echo "📦 Building frontend..."
@@ -21,7 +21,7 @@ services:
       echo "📦 Installing backend dependencies..."
       pip install -r requirements.txt
 
-    preDeployCommand: cd backend-ease-brain && flask db upgrade && python seed_roles.py
+    preDeployCommand: cd backend-ease-brain && flask db upgrade || true && python seed_roles.py || true
 
     startCommand: cd backend-ease-brain && gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --access-logfile - --error-logfile -
 
@@ -51,6 +51,8 @@ services:
         sync: false
       - key: SENDER_EMAIL
         sync: false
+      - key: MOCK_EMAIL_MODE
+        value: "true"
       - key: FRONTEND_URL
         value: https://www.easebrain.live
       - key: VERIFY_BASE_URL

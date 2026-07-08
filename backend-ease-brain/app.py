@@ -98,6 +98,12 @@ from utils.error_responses import (
 # Load environment variables from .env file after all imports
 load_dotenv()
 
+# Fix Render's postgres:// → postgresql:// for SQLAlchemy 2.x
+_database_url = os.environ.get("DATABASE_URL", "sqlite:///easebrain.db")
+if _database_url.startswith("postgres://"):
+    _database_url = _database_url.replace("postgres://", "postgresql://", 1)
+    os.environ["DATABASE_URL"] = _database_url
+
 
 app = Flask(__name__)
 # Configure sessions for CSRF protection
