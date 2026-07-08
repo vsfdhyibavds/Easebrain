@@ -1,21 +1,34 @@
 services:
   # Unified Flask Backend + React Frontend
+  # Flask serves the built React SPA from backend-ease-brain/public/
   - type: web
-    name: easebrain
+    name: easebrain-backend
     env: python
     region: oregon
     plan: free
 
     buildCommand: |
-      echo "📦 Building frontend (outputs directly to backend-ease-brain/public)..."
-      cd frontend-ease-brain && npm install --production=false && npm run build && cd ..
+      echo "==> Step 1: Installing frontend dependencies..."
+      npm install --prefix frontend-ease-brain --production=false
 
-      echo "✅ Verifying frontend build landed in backend public folder..."
+      echo "==> Step 2: Building frontend..."
+      npm run build --prefix frontend-ease-brain
+
+      echo "==> Step 3: Verifying frontend dist output..."
+      ls frontend-ease-brain/dist/
+
+      echo "==> Step 4: Copying frontend build into backend public folder..."
+      rm -rf backend-ease-brain/public/*
+      cp -r frontend-ease-brain/dist/. backend-ease-brain/public/
+
+      echo "==> Step 5: Verifying backend public folder..."
       ls backend-ease-brain/public/
 
-      echo "📦 Installing backend dependencies..."
+      echo "==> Step 6: Installing backend Python dependencies..."
       pip install --upgrade pip
       pip install -r backend-ease-brain/requirements.txt
+
+      echo "==> Build complete!"
 
     preDeployCommand: cd backend-ease-brain && flask db upgrade || true && python seed_roles.py || true
 
@@ -52,9 +65,9 @@ services:
       - key: MOCK_EMAIL_MODE
         value: "true"
       - key: FRONTEND_URL
-        value: https://www.easebrain.live
+        value: https://easebrain-backend.onrender.com
       - key: VERIFY_BASE_URL
-        value: https://www.easebrain.live/verify
+        value: https://easebrain-backend.onrender.com/verify
       - key: WEB_CONCURRENCY
         value: "4"
 

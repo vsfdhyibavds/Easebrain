@@ -24,12 +24,11 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-    // In production builds, output directly into backend-ease-brain/public/
-    // so Flask can serve the SPA without a manual copy step.
+    // In production builds, output to dist/ (default).
+    // The backend's render.yaml buildCommand copies dist/ into
+    // backend-ease-brain/public/ so Flask can serve the SPA.
     build: {
-      outDir: mode === "production"
-        ? path.resolve(__dirname, "../backend-ease-brain/public")
-        : path.resolve(__dirname, "dist"),
+      outDir: path.resolve(__dirname, "dist"),
       emptyOutDir: true,
     },
     server: {
