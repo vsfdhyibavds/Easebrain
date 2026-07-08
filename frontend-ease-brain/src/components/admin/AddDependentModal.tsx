@@ -24,7 +24,7 @@ const AddDependentModal: FC<AddDependentModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://www.easebrain.live/api";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
   if (!isOpen) return null;
 

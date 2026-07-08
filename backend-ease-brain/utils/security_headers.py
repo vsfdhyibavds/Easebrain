@@ -34,40 +34,34 @@ def init_security_headers(app):
         # Content Security Policy (CSP)
         # SECURITY: Adjust these directives based on your application's needs
         csp_directives = {
-            "default-src": ["'self'"],  # Default: only allow same-origin
-            "script-src": [
-                "'self'",
-                "'unsafe-inline'",
-            ],  # Allow scripts from same-origin and inline (adjust as needed)
-            "style-src": [
-                "'self'",
-                "'unsafe-inline'",
-            ],  # Allow styles from same-origin and inline
-            "img-src": [
-                "'self'",
-                "data:",
-                "https:",
-            ],  # Allow images from same-origin, data URIs, and HTTPS
-            "font-src": [
-                "'self'",
-                "data:",
-            ],  # Allow fonts from same-origin and data URIs
-            "connect-src": ["'self'"],  # Allow XHR/WebSocket connections to same-origin
-            "frame-ancestors": ["'none'"],  # Prevent embedding in frames
-            "base-uri": ["'self'"],  # Restrict base URL
-            "form-action": ["'self'"],  # Restrict form submission
+            "default-src": ["'self'"],
+            "script-src": ["'self'", "'unsafe-inline'"],
+            "style-src": ["'self'", "'unsafe-inline'"],
+            "img-src": ["'self'", "data:", "https:"],
+            "font-src": ["'self'", "data:"],
+            "connect-src": ["'self'"],
+            "frame-ancestors": ["'none'"],
+            "base-uri": ["'self'"],
+            "form-action": ["'self'"],
         }
 
-        # Allow frontend domain in production
+        # Allow frontend domain and backend API URL in production
         frontend_url = os.environ.get("FRONTEND_URL", "")
-        if frontend_url and os.environ.get("FLASK_ENV") == "production":
-            frontend_domain = (
-                frontend_url.replace("https://", "")
-                .replace("http://", "")
-                .split("/")[0]
-            )
-            csp_directives["default-src"] = ["'self'", frontend_domain]
-            csp_directives["connect-src"] = ["'self'", frontend_domain]
+        if os.environ.get("FLASK_ENV") == "production":
+            # Always allow the Render backend URL itself
+            render_url = "https://easebrain-backend.onrender.com"
+            allowed_origins = {render_url}
+
+            # Add FRONTEND_URL if set
+            if frontend_url:
+                allowed_origins.add(frontend_url.rstrip("/"))
+
+            # Add www.easebrain.live if configured
+            allowed_origins.add("https://www.easebrain.live")
+
+            # connect-src: allow API calls to all known origins
+            csp_directives["connect-src"] = ["'self'"] + list(allowed_origins)
+            csp_directives["default-src"] = ["'self'"] + list(allowed_origins)
 
         csp_header = "; ".join(
             f"{key} {' '.join(values)}" for key, values in csp_directives.items()

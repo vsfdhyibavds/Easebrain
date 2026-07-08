@@ -25,7 +25,7 @@ const AddAdminUserModal: FC<AddAdminUserModalProps> = ({ isOpen, onClose, onUser
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://www.easebrain.live/api";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -171,9 +171,8 @@ const AddAdminUserModal: FC<AddAdminUserModalProps> = ({ isOpen, onClose, onUser
                   value={formData.firstName}
                   onChange={handleChange}
                   disabled={isLoading}
-                  className={`w-full rounded border pl-10 py-2 focus:border-teal-500 focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:focus:border-teal-400 ${
-                    errors.firstName ? "border-red-500 dark:border-red-500" : "border-gray-300"
-                  }`}
+                  className={`w-full rounded border pl-10 py-2 focus:border-teal-500 focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:focus:border-teal-400 ${errors.firstName ? "border-red-500 dark:border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="John"
                 />
               </div>
@@ -195,9 +194,8 @@ const AddAdminUserModal: FC<AddAdminUserModalProps> = ({ isOpen, onClose, onUser
                   value={formData.lastName}
                   onChange={handleChange}
                   disabled={isLoading}
-                  className={`w-full rounded border pl-10 py-2 focus:border-teal-500 focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:focus:border-teal-400 ${
-                    errors.lastName ? "border-red-500 dark:border-red-500" : "border-gray-300"
-                  }`}
+                  className={`w-full rounded border pl-10 py-2 focus:border-teal-500 focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:focus:border-teal-400 ${errors.lastName ? "border-red-500 dark:border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="Doe"
                 />
               </div>
@@ -219,9 +217,8 @@ const AddAdminUserModal: FC<AddAdminUserModalProps> = ({ isOpen, onClose, onUser
                   value={formData.email}
                   onChange={handleChange}
                   disabled={isLoading}
-                  className={`w-full rounded border pl-10 py-2 focus:border-teal-500 focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:focus:border-teal-400 ${
-                    errors.email ? "border-red-500 dark:border-red-500" : "border-gray-300"
-                  }`}
+                  className={`w-full rounded border pl-10 py-2 focus:border-teal-500 focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:focus:border-teal-400 ${errors.email ? "border-red-500 dark:border-red-500" : "border-gray-300"
+                    }`}
                   placeholder="john@example.com"
                 />
               </div>

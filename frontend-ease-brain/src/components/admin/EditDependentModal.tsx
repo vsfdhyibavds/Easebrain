@@ -33,7 +33,7 @@ const EditDependentModal: FC<EditDependentModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://www.easebrain.live/api";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
   // Update form data when dependent changes
   useEffect(() => {
@@ -185,11 +185,10 @@ const EditDependentModal: FC<EditDependentModalProps> = ({
               value={formData.name}
               onChange={handleChange}
               disabled={isLoading}
-              className={`w-full rounded-lg border px-3 py-2 focus:outline-none dark:bg-gray-700 dark:text-white ${
-                errors.name
+              className={`w-full rounded-lg border px-3 py-2 focus:outline-none dark:bg-gray-700 dark:text-white ${errors.name
                   ? "border-red-300 focus:border-red-500 dark:border-red-600"
                   : "border-gray-300 focus:border-teal-500 dark:border-gray-600 dark:focus:border-teal-400"
-              }`}
+                }`}
               placeholder="Enter dependent name"
             />
             {errors.name && (
@@ -208,11 +207,10 @@ const EditDependentModal: FC<EditDependentModalProps> = ({
               value={formData.age}
               onChange={handleChange}
               disabled={isLoading}
-              className={`w-full rounded-lg border px-3 py-2 focus:outline-none dark:bg-gray-700 dark:text-white ${
-                errors.age
+              className={`w-full rounded-lg border px-3 py-2 focus:outline-none dark:bg-gray-700 dark:text-white ${errors.age
                   ? "border-red-300 focus:border-red-500 dark:border-red-600"
                   : "border-gray-300 focus:border-teal-500 dark:border-gray-600 dark:focus:border-teal-400"
-              }`}
+                }`}
               placeholder="Enter age"
               min="1"
               max="150"
@@ -233,11 +231,10 @@ const EditDependentModal: FC<EditDependentModalProps> = ({
               value={formData.caregiver}
               onChange={handleChange}
               disabled={isLoading}
-              className={`w-full rounded-lg border px-3 py-2 focus:outline-none ${
-                errors.caregiver
+              className={`w-full rounded-lg border px-3 py-2 focus:outline-none ${errors.caregiver
                   ? "border-red-300 focus:border-red-500"
                   : "border-gray-300 focus:border-teal-500"
-              }`}
+                }`}
               placeholder="Enter caregiver name"
             />
             {errors.caregiver && (

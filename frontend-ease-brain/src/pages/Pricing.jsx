@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { motion } from "framer-motion";
 import { FaHome, FaUsers, FaLifeRing, FaDollarSign } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.jpg";
@@ -7,7 +8,7 @@ export default function Pricing() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const timer = setTimeout(() => {}, 100);
+    const timer = setTimeout(() => { }, 100);
     return () => clearTimeout(timer);
   }, []);
 
@@ -139,11 +140,10 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.2 }}
-            className={`p-8 rounded-3xl shadow-xl hover:scale-105 transition-transform duration-300 ${
-              plan.highlight
+            className={`p-8 rounded-3xl shadow-xl hover:scale-105 transition-transform duration-300 ${plan.highlight
                 ? "bg-teal-500 text-white border-2 border-cyan-300 shadow-cyan-400/60"
                 : "bg-teal-100/40 text-teal-900 border border-teal-200/50"
-            }`}
+              }`}
           >
             <h2 className="text-3xl font-semibold text-center mb-4">{plan.title}</h2>
             <p className="text-center mb-6">
@@ -162,11 +162,10 @@ export default function Pricing() {
               ))}
             </ul>
             <button
-              className={`w-full py-3 rounded-xl text-lg font-semibold transition-all ${
-                plan.highlight
+              className={`w-full py-3 rounded-xl text-lg font-semibold transition-all ${plan.highlight
                   ? "bg-cyan-400 text-blue-950 hover:bg-cyan-300"
                   : "bg-white/20 text-teal-900 hover:bg-white/30"
-              }`}
+                }`}
             >
               {plan.button}
             </button>

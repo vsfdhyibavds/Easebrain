@@ -18,7 +18,7 @@ const AdminDependents: FC = () => {
     null
   );
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://www.easebrain.live/api";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
   // Fetch dependents from API on component mount
   useEffect(() => {
@@ -181,90 +181,90 @@ const AdminDependents: FC = () => {
           <SkeletonLoader />
         </div>
       ) : (
-      <>
-      {/* Table */}
-      <section aria-labelledby="table-title">
-        <h2 id="table-title" className="sr-only">Dependents List</h2>
-        <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow dark:shadow-lg">
-          <table className="w-full" aria-label="Dependents table with name, age, caregiver, status and actions">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Age</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Caregiver</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Status</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Last Update</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700" role="presentation">
-              {filteredDependents.length > 0 ? (
-                filteredDependents.map((dependent) => (
-                  <tr key={dependent.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{dependent.name}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{dependent.age}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{dependent.caregiver}</td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex rounded-full bg-green-100 dark:bg-green-900 px-2 py-1 text-xs font-semibold text-green-800 dark:text-green-200">
-                        {dependent.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{dependent.lastUpdate}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-2" role="group" aria-label={`Actions for ${dependent.name}`}>
-                        <button
-                          onClick={() => handleEditDependent(dependent)}
-                          aria-label={`Edit ${dependent.name}`}
-                          className="rounded p-2 hover:bg-blue-100 dark:hover:bg-blue-900 transition min-h-[44px] min-w-[44px]"
-                        >
-                          <FaEdit className="text-blue-600 dark:text-blue-400" aria-hidden="true" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDependent(dependent)}
-                          aria-label={`Delete ${dependent.name}`}
-                          className="rounded p-2 hover:bg-red-100 dark:hover:bg-red-900 transition min-h-[44px] min-w-[44px]"
-                        >
-                          <FaTrash className="text-red-600 dark:text-red-400" aria-hidden="true" />
-                        </button>
-                      </div>
-                    </td>
+        <>
+          {/* Table */}
+          <section aria-labelledby="table-title">
+            <h2 id="table-title" className="sr-only">Dependents List</h2>
+            <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow dark:shadow-lg">
+              <table className="w-full" aria-label="Dependents table with name, age, caregiver, status and actions">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Name</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Age</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Caregiver</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Status</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Last Update</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-200">Actions</th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
-                    No dependents found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700" role="presentation">
+                  {filteredDependents.length > 0 ? (
+                    filteredDependents.map((dependent) => (
+                      <tr key={dependent.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">{dependent.name}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{dependent.age}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{dependent.caregiver}</td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex rounded-full bg-green-100 dark:bg-green-900 px-2 py-1 text-xs font-semibold text-green-800 dark:text-green-200">
+                            {dependent.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{dependent.lastUpdate}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2" role="group" aria-label={`Actions for ${dependent.name}`}>
+                            <button
+                              onClick={() => handleEditDependent(dependent)}
+                              aria-label={`Edit ${dependent.name}`}
+                              className="rounded p-2 hover:bg-blue-100 dark:hover:bg-blue-900 transition min-h-[44px] min-w-[44px]"
+                            >
+                              <FaEdit className="text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDependent(dependent)}
+                              aria-label={`Delete ${dependent.name}`}
+                              className="rounded p-2 hover:bg-red-100 dark:hover:bg-red-900 transition min-h-[44px] min-w-[44px]"
+                            >
+                              <FaTrash className="text-red-600 dark:text-red-400" aria-hidden="true" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                        No dependents found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-      {/* Stats */}
-      <section aria-labelledby="stats-title">
-        <h2 id="stats-title" className="sr-only">Dependents Statistics</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow dark:shadow-lg">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Total Dependents</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{dependents.length}</p>
-        </div>
-        <div className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow dark:shadow-lg">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Active</p>
-          <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
-            {dependents.filter((d) => d.status === "Active").length}
-          </p>
-        </div>
-        <div className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow dark:shadow-lg">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Inactive</p>
-          <p className="mt-2 text-2xl font-bold text-gray-600 dark:text-gray-400">
-            {dependents.filter((d) => d.status === "Inactive").length}
-          </p>
-        </div>
-      </div>
-      </section>
-      </>
+          {/* Stats */}
+          <section aria-labelledby="stats-title">
+            <h2 id="stats-title" className="sr-only">Dependents Statistics</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow dark:shadow-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Dependents</p>
+                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{dependents.length}</p>
+              </div>
+              <div className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow dark:shadow-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Active</p>
+                <p className="mt-2 text-2xl font-bold text-green-600 dark:text-green-400">
+                  {dependents.filter((d) => d.status === "Active").length}
+                </p>
+              </div>
+              <div className="rounded-lg bg-white dark:bg-gray-800 p-4 shadow dark:shadow-lg">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Inactive</p>
+                <p className="mt-2 text-2xl font-bold text-gray-600 dark:text-gray-400">
+                  {dependents.filter((d) => d.status === "Inactive").length}
+                </p>
+              </div>
+            </div>
+          </section>
+        </>
       )}
 
       {/* Modals */}

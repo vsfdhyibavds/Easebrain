@@ -1,36 +1,24 @@
 // src/utils.js
 
 // Behavior:
-// - If the Vite env var VITE_BASE_URL is set, always use it (useful for explicit
-//   local setups or when running against a remote backend).
-// - Otherwise, in development use a relative base ("") so the Vite dev server
-//   proxy rules can forward requests to the backend (recommended for local dev).
-// - In production, fall back to the hosted backend URL.
-const PROD_FALLBACK = "http://www.easebrain.live/api";
-
+// - If the Vite env var VITE_BASE_URL is set, always use it.
+// - In development, use a relative base ("") so the Vite dev server
+//   proxy rules forward requests to the backend (recommended for local dev).
+// - In production, use a relative "/api" base — since Flask serves the
+//   frontend from the same origin, relative paths always work.
 const VITE_BASE = import.meta.env.VITE_BASE_URL;
 
-// Determine the raw base first (explicit env wins, otherwise use dev-relative or prod fallback)
+// Determine the raw base: explicit env wins, dev uses /api proxy, prod uses relative /api
 let _base = VITE_BASE
   ? VITE_BASE
-  : import.meta.env.MODE === "development"
-  ? "/api"
-  : PROD_FALLBACK;
+  : "/api";
 
-// Normalize: remove trailing slashes when a non-empty base is provided so callers
-// concatenating with leading-paths (e.g. `${BASE_URL}/login`) don't produce `//`.
+// Normalize: remove trailing slashes
 if (_base && _base.endsWith("/")) {
   _base = _base.replace(/\/+$/g, "");
 }
 
 export const BASE_URL = _base;
-
-// Helpful debug message during development when using /api base
-if (import.meta.env.MODE === "development" && !VITE_BASE) {
-  console.info(
-    "BASE_URL is '/api'. Vite dev server proxy must be configured to forward /api requests (see vite.config.js)."
-  );
-}
 
 /**
  * Safely get item from localStorage

@@ -191,7 +191,7 @@ function DependentProfile() {
     const fetchDependentData = async () => {
       try {
         // Try to fetch from backend API
-        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://www.easebrain.live/api';
+        const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
         const response = await fetch(`${apiBase}/users/${id}`);
 
         if (response.ok) {
@@ -274,9 +274,8 @@ function DependentProfile() {
                 </div>
                 <div className="flex items-center gap-2">
                   <FaHeartbeat className="text-teal-500" />
-                  <span className={`font-semibold ${
-                    dependent.status === 'stable' ? 'text-green-600' : 'text-yellow-600'
-                  }`}>
+                  <span className={`font-semibold ${dependent.status === 'stable' ? 'text-green-600' : 'text-yellow-600'
+                    }`}>
                     {dependent.status.charAt(0).toUpperCase() + dependent.status.slice(1)}
                   </span>
                 </div>
@@ -299,11 +298,10 @@ function DependentProfile() {
             <button
               key={tabId}
               onClick={() => setActiveTab(tabId)}
-              className={`pb-4 px-2 font-semibold transition-colors flex items-center gap-2 border-b-2 cursor-pointer ${
-                activeTab === tabId
+              className={`pb-4 px-2 font-semibold transition-colors flex items-center gap-2 border-b-2 cursor-pointer ${activeTab === tabId
                   ? 'text-teal-600 border-teal-600'
                   : 'text-teal-700 border-transparent hover:text-teal-600'
-              }`}
+                }`}
             >
               {icon ? React.createElement(icon) : null} {label}
             </button>
@@ -429,10 +427,9 @@ function DependentProfile() {
                         </span>
                       </div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      apt.status === 'scheduled' ? 'bg-green-100 text-green-700' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${apt.status === 'scheduled' ? 'bg-green-100 text-green-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
                       {apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
                     </span>
                   </div>
@@ -474,15 +471,13 @@ function DependentProfile() {
                     className="flex items-center justify-between p-4 bg-teal-50 rounded-xl border border-teal-200"
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      <FaCheckCircle className={`text-xl ${
-                        goal.status === 'on-track' ? 'text-green-500' : 'text-yellow-500'
-                      }`} />
+                      <FaCheckCircle className={`text-xl ${goal.status === 'on-track' ? 'text-green-500' : 'text-yellow-500'
+                        }`} />
                       <div className="font-semibold text-teal-900">{goal.goal}</div>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      goal.status === 'on-track' ? 'bg-green-100 text-green-700' :
-                      'bg-yellow-100 text-yellow-700'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${goal.status === 'on-track' ? 'bg-green-100 text-green-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
                       {goal.status === 'on-track' ? 'On Track' : 'Needs Attention'}
                     </span>
                   </div>

@@ -7,7 +7,7 @@ import { MessageBubble } from "./MessageBubble";
 
 
 // fallback to production backend URL if VITE_SOCKET_URL not set
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://www.easebrain.live";
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || window.location.origin;
 const socket = io(SOCKET_URL, {
   withCredentials: true,
 });

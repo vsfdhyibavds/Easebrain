@@ -20,7 +20,7 @@ const DeleteDependentModal: FC<DeleteDependentModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://www.easebrain.live/api";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
   if (!isOpen || !dependent) return null;
 

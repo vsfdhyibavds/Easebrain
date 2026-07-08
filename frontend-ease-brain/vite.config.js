@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   // Load env and allow VITE_BASE_URL to override proxy target
   const env = loadEnv(mode, process.cwd(), "");
   // VITE_BASE_URL may include a trailing `/api` — strip it for proxy target
-  const rawBase = env.VITE_BASE_URL || "http://www.easebrain.live/api";
+  const rawBase = env.VITE_BASE_URL || "/api";
   const apiTarget = rawBase.replace(/\/api\/?$/, "");
   // Provide __dirname equivalent for ESM
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
