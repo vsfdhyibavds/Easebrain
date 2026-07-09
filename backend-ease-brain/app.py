@@ -444,38 +444,6 @@ from utils.rate_limiter import limiter
 limiter.exempt(app.view_functions.get("health.health_check"))
 
 
-# TEMP DIAGNOSTIC ENDPOINT (remove after live roles 500 resolved)
-@app.route("/api/_diag_roles", methods=["GET"])
-def _diag_roles():
-    from sqlalchemy import inspect, text
-    from models import Role
-
-    out = {}
-    try:
-        out["alembic_version"] = db.session.execute(
-            text("SELECT version_num FROM alembic_version")
-        ).scalar()
-    except Exception as e:
-        out["alembic_version_error"] = repr(str(e))
-    try:
-        out["roles_table_exists"] = inspect(db.engine).has_table("roles")
-    except Exception as e:
-        out["roles_table_error"] = repr(str(e))
-    try:
-        rows = Role.query.all()
-        out["roles_query_ok"] = True
-        out["roles_count"] = len(rows)
-    except Exception as e:
-        out["roles_query_error"] = repr(str(e))
-    try:
-        out["roles_columns"] = [
-            c["name"] for c in inspect(db.engine).get_columns("roles")
-        ]
-    except Exception as e:
-        out["roles_columns_error"] = repr(str(e))
-    return jsonify(out), 200
-
-
 @app.route("/verify/<token>", methods=["GET"])
 def verify_token_simple(token):
     """Convenience route for manual browser verification during development.
