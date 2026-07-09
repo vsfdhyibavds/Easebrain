@@ -32,7 +32,7 @@ class Reminder(db.Model, SerializerMixin):
 
     user = db.relationship("User", backref="reminders")
 
-    serialize_rules = ("-user.reminders",)
+    serialize_rules = ("-user",)
 
     def send_notifications(self):
         # Email

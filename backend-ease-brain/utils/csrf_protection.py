@@ -42,6 +42,13 @@ class CSRFProtector:
         # Store in g for easy access in templates/code
         g.csrf_token = session.get("csrf_token")
 
+        # The JSON API authenticates with stateless Bearer JWTs (not session
+        # cookies), so CSRF double-submit protection does not apply to /api/*
+        # routes. Enforcing it there breaks every state-changing request from
+        # the SPA, which never sends CSRF tokens. Skip validation for the API.
+        if request.path.startswith("/api/"):
+            return
+
         # Enforce CSRF validation for state-changing requests
         if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
             # Skip validation for exempt endpoints (e.g., /api/health, auth endpoints)

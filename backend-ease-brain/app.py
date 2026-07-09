@@ -244,6 +244,25 @@ jwt = JWTManager(app)
 db.init_app(app)
 migrate = Migrate(app, db)
 
+# Normalize all JWT auth failures to 401 so API clients (which only
+# handle 401 to clear the token and redirect to login) behave consistently
+# for expired, malformed, missing, and revoked tokens.
+@jwt.invalid_token_loader
+def _invalid_token(msg):
+    return jsonify({"message": "Invalid token"}), 401
+
+@jwt.expired_token_loader
+def _expired_token(jwt_header, jwt_payload):
+    return jsonify({"message": "Token has expired"}), 401
+
+@jwt.unauthorized_loader
+def _missing_token(msg):
+    return jsonify({"message": "Missing token"}), 401
+
+@jwt.revoked_token_loader
+def _revoked_token(jwt_header, jwt_payload):
+    return jsonify({"message": "Token has been revoked"}), 401
+
 # Initialize audit logging
 configure_audit_logging(app)
 
@@ -407,7 +426,9 @@ app.register_blueprint(
 app.register_blueprint(story_bp, url_prefix="/api")  # /api/stories
 app.register_blueprint(caregiver_connection_bp, url_prefix="/api")  # /api/caregivers
 app.register_blueprint(community_bp, url_prefix="/api/community")  # /api/community
-app.register_blueprint(moderation_bp, url_prefix="/api")  # /api/moderation
+app.register_blueprint(
+    moderation_bp, url_prefix="/api/moderation"
+)  # /api/moderation/* (Flask overrides the blueprint's own prefix)
 app.register_blueprint(safety_plan_bp, url_prefix="/api")  # /api/safety-plans
 app.register_blueprint(settings_bp, url_prefix="/api")  # /api/settings
 app.register_blueprint(

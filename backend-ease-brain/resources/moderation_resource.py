@@ -11,7 +11,7 @@ from models import (
 from datetime import datetime
 import logging
 
-moderation_bp = Blueprint("moderation", __name__, url_prefix="/moderation")
+moderation_bp = Blueprint("moderation", __name__)
 logger = logging.getLogger(__name__)
 
 

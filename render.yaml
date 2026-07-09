@@ -30,7 +30,7 @@ services:
 
       echo "==> Build complete!"
 
-    preDeployCommand: cd backend-ease-brain && flask db upgrade || true && python seed_roles.py || true
+    preDeployCommand: cd backend-ease-brain && bash migrate_and_seed.sh
 
     startCommand: cd backend-ease-brain && gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --access-logfile - --error-logfile -
 

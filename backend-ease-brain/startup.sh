@@ -41,13 +41,9 @@ if [ "$db_ready" = false ]; then
     exit 1
 fi
 
-# Run database migrations
+# Run database migrations (with self-healing fallback)
 echo "🗄️ Running database migrations..."
-flask db upgrade || echo "⚠️ Migration failed, but continuing..."
-
-# Seed roles if needed
-echo "🌱 Seeding default roles..."
-python seed_roles.py || echo "⚠️ Role seeding failed, but continuing..."
+bash ./migrate_and_seed.sh
 
 # Start Gunicorn
 echo "🚀 Starting Gunicorn..."
