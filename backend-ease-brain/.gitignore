@@ -4,7 +4,10 @@ __pycache__/
 *.pyo
 
 # Database
-migrations/
+# NOTE: migrations/ is intentionally tracked (committed) so Alembic runs on
+# deploy. It was previously gitignored, which meant `flask db upgrade` silently
+# fell back to db.create_all() and caused schema drift (e.g. roles missing the
+# is_caregiver column -> 500 on /api/roles).
 instance/
 
 # Virtual environments
