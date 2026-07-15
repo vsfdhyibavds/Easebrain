@@ -9,6 +9,7 @@
 #    The live DB was built by an older db.create_all() that predates this column,
 #    causing a 500 on GET /api/roles. This fixes it on every deploy.
 # 4. Seed default roles (idempotent).
+# 5. Verify the schema is correct before finishing.
 
 set -eu
 
@@ -23,14 +24,30 @@ with app.app_context():
 PY
 fi
 
+echo "==> Verifying migrations applied..."
+python - <<'PY'
+from app import app, db
+from sqlalchemy import inspect, text
+with app.app_context():
+    inspector = inspect(db.engine)
+    version_table = inspector.has_table("alembic_version")
+    print(f"   Alembic version table exists: {version_table}")
+    if version_table:
+        with db.engine.connect() as conn:
+            result = conn.execute(text("SELECT version_num FROM alembic_version"))
+            versions = [row[0] for row in result]
+            print(f"   Applied migrations: {versions}")
+PY
+
 echo "==> Repairing known schema drift (roles.is_caregiver)..."
 python - <<'PY'
 from app import app, db
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 with app.app_context():
-    inspector = db.inspect(db.engine)
+    inspector = inspect(db.engine)
     if inspector.has_table("roles"):
         cols = [c["name"] for c in inspector.get_columns("roles")]
+        print(f"   Current roles columns: {cols}")
         if "is_caregiver" not in cols:
             db.session.execute(
                 text("ALTER TABLE roles ADD COLUMN is_caregiver BOOLEAN NOT NULL DEFAULT FALSE")
@@ -43,5 +60,37 @@ with app.app_context():
         print("ℹ️  roles table missing (will be created by migrations/create_all).")
 PY
 
+echo "==> Verifying roles table schema..."
+python - <<'PY'
+from app import app, db
+from models.role import Role
+from sqlalchemy import inspect
+with app.app_context():
+    inspector = inspect(db.engine)
+    if inspector.has_table("roles"):
+        cols = [c["name"] for c in inspector.get_columns("roles")]
+        expected = ["id", "name", "role_type", "is_caregiver"]
+        missing = [c for c in expected if c not in cols]
+        if missing:
+            print(f"❌ FATAL: roles table is missing columns: {missing}")
+            print(f"   Current columns: {cols}")
+            exit(1)
+        else:
+            print(f"✅ roles table schema verified: {cols}")
+        
+        try:
+            roles = Role.query.all()
+            print(f"✅ Role.query.all() works: found {len(roles)} roles")
+            for r in roles:
+                print(f"   - {r.name} (type={r.role_type}, caregiver={r.is_caregiver})")
+        except Exception as e:
+            print(f"❌ FATAL: Role.query.all() failed: {e}")
+            exit(1)
+    else:
+        print("ℹ️  roles table does not exist yet (will be created by migrations).")
+PY
+
 echo "==> Seeding default roles..."
 python seed_roles.py
+
+echo "==> Database initialization complete."
