@@ -2,7 +2,7 @@ services:
   # Unified Flask Backend + React Frontend
   # Flask serves the built React SPA from backend-ease-brain/public/
   - type: web
-    name: easebrain-backend
+    name: easebrain
     env: python
     region: oregon
     plan: free
@@ -65,7 +65,7 @@ services:
       - key: MOCK_EMAIL_MODE
         value: "true"
       - key: FRONTEND_URL
-        value: https://easebrain-backend.onrender.com
+        value: https://easebrain.onrender.com
       - key: VERIFY_BASE_URL
         value: https://easebrain-backend.onrender.com/verify
       - key: WEB_CONCURRENCY
