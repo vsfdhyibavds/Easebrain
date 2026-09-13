@@ -49,7 +49,7 @@ def init_security_headers(app):
         frontend_url = os.environ.get("FRONTEND_URL", "")
         if os.environ.get("FLASK_ENV") == "production":
             # Always allow the Render backend URL itself
-            render_url = "https://easebrain-backend.onrender.com"
+            render_url = "https://easebrain.onrender.com"
             allowed_origins = {render_url}
 
             # Add FRONTEND_URL if set

@@ -38,7 +38,7 @@ loglevel = "info"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # Process naming
-proc_name = "easebrain-backend"
+proc_name = "easebrain"
 
 # SSL configuration (handled by Render/reverse proxy)
 # No need to configure SSL here - Render handles it at the edge

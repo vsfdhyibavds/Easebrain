@@ -8,6 +8,7 @@ services:
     plan: free
 
     buildCommand: |
+      set -e
       echo "==> Step 1: Installing frontend dependencies..."
       npm install --prefix frontend-ease-brain --production=false
 
@@ -32,7 +33,7 @@ services:
 
     preDeployCommand: cd backend-ease-brain && bash migrate_and_seed.sh
 
-    startCommand: cd backend-ease-brain && gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --access-logfile - --error-logfile -
+    startCommand: cd backend-ease-brain && python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --access-logfile - --error-logfile -
 
     healthCheckPath: /api/health
     healthCheckTimeout: 30
@@ -67,7 +68,7 @@ services:
       - key: FRONTEND_URL
         value: https://easebrain.onrender.com
       - key: VERIFY_BASE_URL
-        value: https://easebrain-backend.onrender.com/verify
+        value: https://easebrain.onrender.com/verify
       - key: WEB_CONCURRENCY
         value: "4"
 
