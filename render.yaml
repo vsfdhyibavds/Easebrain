@@ -7,33 +7,11 @@ services:
     region: oregon
     plan: free
 
-    buildCommand: |
-      set -e
-      echo "==> Step 1: Installing frontend dependencies..."
-      npm install --prefix frontend-ease-brain --production=false
-
-      echo "==> Step 2: Building frontend..."
-      npm run build --prefix frontend-ease-brain
-
-      echo "==> Step 3: Verifying frontend dist output..."
-      ls frontend-ease-brain/dist/
-
-      echo "==> Step 4: Copying frontend build into backend public folder..."
-      rm -rf backend-ease-brain/public/*
-      cp -r frontend-ease-brain/dist/. backend-ease-brain/public/
-
-      echo "==> Step 5: Verifying backend public folder..."
-      ls backend-ease-brain/public/
-
-      echo "==> Step 6: Installing backend Python dependencies..."
-      pip install --upgrade pip
-      pip install -r backend-ease-brain/requirements.txt
-
-      echo "==> Build complete!"
+    buildCommand: bash build.sh
 
     preDeployCommand: cd backend-ease-brain && bash migrate_and_seed.sh
 
-    startCommand: cd backend-ease-brain && python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 4 --timeout 120 --access-logfile - --error-logfile -
+    startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
 
     healthCheckPath: /api/health
     healthCheckTimeout: 30

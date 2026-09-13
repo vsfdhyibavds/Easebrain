@@ -14,7 +14,7 @@
 set -eu
 
 echo "==> Running database migrations..."
-if ! flask db upgrade; then
+if ! python -m flask db upgrade; then
     echo "⚠️  flask db upgrade failed; bootstrapping schema with db.create_all()"
     python - <<'PY'
 from app import app, db

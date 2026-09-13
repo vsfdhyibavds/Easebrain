@@ -13,8 +13,8 @@ workers = int(os.environ.get("WEB_CONCURRENCY", multiprocessing.cpu_count()))
 # Worker class (sync is good for Flask)
 worker_class = "sync"
 
-# Worker timeout (30 seconds)
-timeout = 30
+# Worker timeout (120 seconds)
+timeout = 120
 
 # Keep-alive timeout
 keepalive = 2

@@ -17,7 +17,7 @@ fi
 echo ""
 echo "📦 Building frontend..."
 cd frontend-ease-brain
-npm install
+npm install --production=false
 npm run build
 
 # Step 2: Copy frontend build to backend public directory
