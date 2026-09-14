@@ -3,9 +3,25 @@
 # Ensures Python dependencies are installed so that `gunicorn app:app` works
 # even when the Render dashboard's build command fails to run pip install.
 
-export PATH="/opt/render/venv/bin:$PATH"
-
 REPO_ROOT="/opt/render/project/src"
-if ! python -c "import gunicorn" 2>/dev/null; then
-    pip install -r "${REPO_ROOT}/backend-ease-brain/requirements.txt" 2>&1 || true
+
+# Ensure the Render venv is on PATH (it may not be activated under BASH_ENV)
+if [ -d "/opt/render/venv/bin" ]; then
+    export PATH="/opt/render/venv/bin:$PATH"
+fi
+
+# Resolve the Python executable (handles python / python3)
+if command -v python >/dev/null 2>&1; then
+    PY=python
+elif command -v python3 >/dev/null 2>&1; then
+    PY=python3
+else
+    exit 0
+fi
+
+# Install Python dependencies if gunicorn is not already available
+if ! ${PY} -c "import gunicorn" 2>/dev/null; then
+    echo "==> .render-bashrc: gunicorn not found, installing dependencies..."
+    ${PY} -m pip install --upgrade pip
+    ${PY} -m pip install -r "${REPO_ROOT}/backend-ease-brain/requirements.txt"
 fi

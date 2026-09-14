@@ -11,7 +11,7 @@ services:
 
     preDeployCommand: cd backend-ease-brain && bash migrate_and_seed.sh
 
-    startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
+    startCommand: source /opt/render/project/src/.render-bashrc && cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
 
     healthCheckPath: /api/health
     healthCheckTimeout: 30
