@@ -1,0 +1,11 @@
+#!/bin/bash
+# Sourced via BASH_ENV for every non-interactive bash invocation on Render.
+# Ensures Python dependencies are installed so that `gunicorn app:app` works
+# even when the Render dashboard's build command fails to run pip install.
+
+export PATH="/opt/render/venv/bin:$PATH"
+
+REPO_ROOT="/opt/render/project/src"
+if ! python -c "import gunicorn" 2>/dev/null; then
+    pip install -r "${REPO_ROOT}/backend-ease-brain/requirements.txt" 2>&1 || true
+fi
