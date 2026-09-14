@@ -5,10 +5,14 @@
 
 REPO_ROOT="/opt/render/project/src"
 
-# Ensure the Render venv is on PATH (it may not be activated under BASH_ENV)
+# Ensure the Render venv is on PATH (it may not be activated under BASH_ENV).
+# Render creates the venv at /opt/render/venv/ for env: python services.
 if [ -d "/opt/render/venv/bin" ]; then
     export PATH="/opt/render/venv/bin:$PATH"
 fi
+
+# Also add user-local bin (pip --user installs here when not in a venv)
+export PATH="${HOME}/.local/bin:${PATH}"
 
 # Resolve the Python executable (handles python / python3)
 if command -v python >/dev/null 2>&1; then
@@ -24,4 +28,9 @@ if ! ${PY} -c "import gunicorn" 2>/dev/null; then
     echo "==> .render-bashrc: gunicorn not found, installing dependencies..."
     ${PY} -m pip install --upgrade pip
     ${PY} -m pip install -r "${REPO_ROOT}/backend-ease-brain/requirements.txt"
+    # Re-add bin dirs to PATH after fresh install
+    if [ -d "/opt/render/venv/bin" ]; then
+        export PATH="/opt/render/venv/bin:$PATH"
+    fi
+    export PATH="${HOME}/.local/bin:${PATH}"
 fi
