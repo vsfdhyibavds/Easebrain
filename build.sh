@@ -32,8 +32,12 @@ cp -r frontend-ease-brain/dist/* backend-ease-brain/public/
 echo ""
 echo "📦 Installing backend dependencies..."
 cd backend-ease-brain
-pip install --upgrade pip
-pip install -r requirements.txt
+if [ -f "pyproject.toml" ]; then
+    poetry install
+else
+    pip install --upgrade pip
+    pip install -r requirements.txt
+fi
 
 echo ""
 echo "✅ Build complete!"
