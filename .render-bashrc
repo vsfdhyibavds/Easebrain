@@ -26,8 +26,12 @@ fi
 # Install Python dependencies if gunicorn is not already available
 if ! ${PY} -c "import gunicorn" 2>/dev/null; then
     echo "==> .render-bashrc: gunicorn not found, installing dependencies..."
-    ${PY} -m pip install --upgrade pip
-    ${PY} -m pip install -r "${REPO_ROOT}/backend-ease-brain/requirements.txt"
+    if [ -f "${REPO_ROOT}/backend-ease-brain/pyproject.toml" ]; then
+        cd "${REPO_ROOT}/backend-ease-brain" && ${PY} -m pip install --upgrade pip && ${PY} -m pip install poetry && poetry install
+    else
+        ${PY} -m pip install --upgrade pip
+        ${PY} -m pip install -r "${REPO_ROOT}/backend-ease-brain/requirements.txt"
+    fi
     # Re-add bin dirs to PATH after fresh install
     if [ -d "/opt/render/venv/bin" ]; then
         export PATH="/opt/render/venv/bin:$PATH"

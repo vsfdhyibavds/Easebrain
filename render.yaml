@@ -2,16 +2,15 @@ services:
   # Unified Flask Backend + React Frontend
   # Flask serves the built React SPA from backend-ease-brain/public/
   - type: web
-    name: easebrain
+    name: easebrain-backend
     env: python
+    rootDir: backend-ease-brain
     region: oregon
     plan: free
 
-    buildCommand: bash build.sh
+    buildCommand: cd backend-ease-brain && poetry install
 
-    preDeployCommand: cd backend-ease-brain && bash migrate_and_seed.sh
-
-    startCommand: source /opt/render/project/src/.render-bashrc && cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
+    startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
 
     healthCheckPath: /api/health
     healthCheckTimeout: 30
