@@ -69,11 +69,11 @@ If you don't want to delete and re-create, you can manually fix the environment:
    ```
 4. Change **Build Command** to:
    ```
-   pip install -r requirements.txt
+   cd backend-ease-brain && poetry install
    ```
 5. Change **Start Command** to:
    ```
-   gunicorn -c gunicorn_config.py app:app
+   cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
    ```
 6. Click "Save" and Render will auto-redeploy
 
@@ -93,17 +93,23 @@ curl https://easebrain-backend.onrender.com/api/health
 Render's behavior:
 1. When you manually create a service, it auto-detects the runtime (Node, Python, etc.)
 2. It then runs a **default build command** for that runtime
-3. For Node, the default is: `npm install; npm run build`
+3. For Python, the default is: `pip install -r requirements.txt`
 4. This **ignores your render.yaml configuration**
+5. The default start command uses bare `gunicorn` (not `python -m gunicorn`), which fails when gunicorn is not on PATH
+
+The code-level fix:
+- Added `backend-ease-brain/pyproject.toml` for Poetry dependency management
+- Updated `render.yaml` with proper `rootDir` and Poetry-based build/start commands
+- Updated `.render-bashrc` to prefer Poetry install when `pyproject.toml` exists
 
 The solution is to either:
-- Import from `render.yaml` (recommended - automatic)
-- OR manually configure the build/start commands to match render.yaml
+- **Re-import from `render.yaml`** (recommended - uses Poetry install and `python -m gunicorn`)
+- OR manually configure the build/start commands to match the updated `render.yaml`
 
 ## Next Steps
 
-1. **Delete** the current failing service
-2. **Import from Git** and select `render.yaml`
+1. **Delete** the current failing service (or manually update its build/start commands)
+2. **Import from Git** and select `render.yaml` — this will auto-detect the `pyproject.toml` and use Poetry
 3. **Configure secrets** in Render dashboard
 4. **Wait** for automatic deployment
 
