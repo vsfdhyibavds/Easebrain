@@ -19,8 +19,8 @@ Go to: easebrain-backend → Environment → Add these as **Secret** variables:
 
 ### Verify Configuration
 - [ ] Check that `DATABASE_URL` is auto-set (should appear in Environment tab)
-- [ ] Verify build command: `poetry install`
-- [ ] Verify start command: `./startup.sh`
+- [ ] Verify build command: `cd backend-ease-brain && poetry install --no-root`
+- [ ] Verify start command: `cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app`
 - [ ] Verify preDeploy command: `flask db upgrade && python seed_roles.py`
 
 ## Post-Deployment

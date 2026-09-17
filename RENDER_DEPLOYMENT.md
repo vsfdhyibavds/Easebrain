@@ -47,14 +47,14 @@ services:
     name: easebrain-backend
     env: python
     rootDir: backend-ease-brain
-    buildCommand: poetry install
-    startCommand: python -m gunicorn -c gunicorn_config.py app:app
+    buildCommand: cd backend-ease-brain && poetry install --no-root
+    startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
 ```
 
 **Key Features:**
 - Separate backend and frontend services with explicit runtimes
 - Uses Poetry (`pyproject.toml`) for Python dependency management
-- Uses per-service `rootDir` to avoid runtime auto-detection issues
+- Explicit `cd backend-ease-brain &&` in build/start commands (Render runs from repo root)
 - Uses `python -m gunicorn` for production WSGI (not bare `gunicorn`)
 - Frontend served as a static site
 
@@ -97,7 +97,7 @@ Use the `.env.render.example` file as a template for all available variables.
 
 **Backend Build Command:**
 ```bash
-poetry install
+cd backend-ease-brain && poetry install --no-root
 ```
 
 **Frontend Build Command:**
@@ -107,7 +107,7 @@ npm install --production=false && npm run build
 
 **Start Command:**
 ```bash
-python -m gunicorn -c gunicorn_config.py app:app
+cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
 ```
 
 Uses `gunicorn_config.py` for production optimization:
@@ -185,7 +185,7 @@ Solution: Check Gunicorn workers
 
 ```
 Solution: Ensure Poetry dependencies are installed
-- Run: cd backend-ease-brain && poetry install locally
+- Run: cd backend-ease-brain && poetry install --no-root locally
 - Commit any poetry.lock changes and re-deploy
 - Do NOT use pip install -r requirements.txt; use poetry install
 ```

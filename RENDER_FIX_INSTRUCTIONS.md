@@ -75,12 +75,12 @@ If you don't want to delete and re-create, you can manually fix the environment:
    ```
 4. Change **Build Command** to:
     ```
-    poetry install
+    cd backend-ease-brain && poetry install --no-root
     ```
     > **Important:** Do NOT use `pip install -r requirements.txt`. The project uses Poetry (`pyproject.toml`), and `pip install` will not correctly resolve Poetry-managed dependencies or install `gunicorn` on PATH.
 5. Change **Start Command** to:
     ```
-    python -m gunicorn -c gunicorn_config.py app:app
+    cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
     ```
     > **Important:** Do NOT use bare `gunicorn`. When installed via Poetry, `gunicorn` is in the Poetry virtualenv and not on `PATH`. Use `python -m gunicorn` instead.
 6. Click "Save" and Render will auto-redeploy
@@ -108,7 +108,7 @@ Render's behavior:
 
 The code-level fix:
 - `backend-ease-brain/pyproject.toml` is the source of truth for Python dependencies (Poetry)
-- `render.yaml` uses `poetry install` for building and `python -m gunicorn` for starting
+- `render.yaml` uses `cd backend-ease-brain && poetry install --no-root` for building and `cd backend-ease-brain && python -m gunicorn` for starting
 - `.render-bashrc` provides a fallback to install via Poetry when `pyproject.toml` exists
 
 The solution is to either:
