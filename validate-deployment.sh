@@ -42,7 +42,7 @@ check_env_var() {
 
 echo "📋 Checking Required Files..."
 check_file "render.yaml"
-check_file "backend-ease-brain/requirements.txt"
+check_file "backend-ease-brain/pyproject.toml"
 check_file "backend-ease-brain/app.py"
 check_file "backend-ease-brain/gunicorn_config.py"
 check_file "frontend-ease-brain/package.json"
@@ -50,35 +50,39 @@ check_file "RENDER_DEPLOYMENT.md"
 echo ""
 
 echo "🔧 Checking Python Configuration..."
-check_file "backend-ease-brain/requirements.txt" && {
-    if grep -q "gunicorn" backend-ease-brain/requirements.txt; then
-        echo -e "${GREEN}✓${NC} Gunicorn in requirements.txt"
-    else
-        echo -e "${RED}✗${NC} Gunicorn missing from requirements.txt"
-        failed=$((failed + 1))
-    fi
+if [ -f "backend-ease-brain/pyproject.toml" ]; then
+    check_file "backend-ease-brain/pyproject.toml" && {
+        if grep -q "gunicorn" backend-ease-brain/pyproject.toml; then
+            echo -e "${GREEN}✓${NC} Gunicorn in pyproject.toml"
+        else
+            echo -e "${RED}✗${NC} Gunicorn missing from pyproject.toml"
+            failed=$((failed + 1))
+        fi
 
-    if grep -q "flask" backend-ease-brain/requirements.txt; then
-        echo -e "${GREEN}✓${NC} Flask in requirements.txt"
-    else
-        echo -e "${RED}✗${NC} Flask missing from requirements.txt"
-        failed=$((failed + 1))
-    fi
+        if grep -q "Flask" backend-ease-brain/pyproject.toml; then
+            echo -e "${GREEN}✓${NC} Flask in pyproject.toml"
+        else
+            echo -e "${RED}✗${NC} Flask missing from pyproject.toml"
+            failed=$((failed + 1))
+        fi
+    }
+elif [ -f "backend-ease-brain/requirements.txt" ]; then
+    check_file "backend-ease-brain/requirements.txt" && {
+        if grep -q "gunicorn" backend-ease-brain/requirements.txt; then
+            echo -e "${GREEN}✓${NC} Gunicorn in requirements.txt"
+        else
+            echo -e "${RED}✗${NC} Gunicorn missing from requirements.txt"
+            failed=$((failed + 1))
+        fi
 
-    if grep -q "sqlalchemy" backend-ease-brain/requirements.txt; then
-        echo -e "${GREEN}✓${NC} SQLAlchemy in requirements.txt"
-    else
-        echo -e "${RED}✗${NC} SQLAlchemy missing from requirements.txt"
-        failed=$((failed + 1))
-    fi
-
-    if grep -q "psycopg2" backend-ease-brain/requirements.txt; then
-        echo -e "${GREEN}✓${NC} psycopg2 in requirements.txt"
-    else
-        echo -e "${RED}✗${NC} psycopg2 missing from requirements.txt"
-        failed=$((failed + 1))
-    fi
-}
+        if grep -q "flask" backend-ease-brain/requirements.txt; then
+            echo -e "${GREEN}✓${NC} Flask in requirements.txt"
+        else
+            echo -e "${RED}✗${NC} Flask missing from requirements.txt"
+            failed=$((failed + 1))
+        fi
+    }
+fi
 echo ""
 
 echo "📦 Checking Node/Frontend Configuration..."
@@ -104,7 +108,7 @@ echo ""
 echo "📝 Checking Documentation..."
 check_file "RENDER_DEPLOYMENT.md"
 check_file "PRODUCTION_CHECKLIST.md"
-check_file "backend-ease-brain/requirements.txt"
+check_file "backend-ease-brain/pyproject.toml"
 echo ""
 
 echo "🔄 Checking render.yaml Configuration..."

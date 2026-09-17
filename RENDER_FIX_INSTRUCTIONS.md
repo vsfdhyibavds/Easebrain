@@ -3,8 +3,14 @@
 ## Problem
 Render is NOT reading the `render.yaml` configuration. Instead, it's auto-detecting the project and running a default build command that looks for `src/package.json`.
 
+The deploy failure from the auto-detected configuration showed two errors:
+1. **Build step**: `pip install -r backend-ease-brain/requirements.txt` — ignores Poetry-managed dependencies
+2. **Start step**: `gunicorn app:app` — bare `gunicorn` not found on PATH
+
 ## Root Cause
 The services were likely created manually in the Render dashboard instead of importing the infrastructure from `render.yaml`.
+
+The project now uses **Poetry** for Python dependency management via `backend-ease-brain/pyproject.toml` (and the root `pyproject.toml`). Dependencies like `gunicorn` are declared in `pyproject.toml`, **not** in `requirements.txt`. Using `pip install -r requirements.txt` will miss Poetry-specific dependency resolution, and bare `gunicorn` is not on PATH — `python -m gunicorn` must be used instead.
 
 ## Solution - Correct Way to Deploy
 
@@ -71,10 +77,12 @@ If you don't want to delete and re-create, you can manually fix the environment:
    ```
    cd backend-ease-brain && poetry install
    ```
+   > **Important:** Do NOT use `pip install -r requirements.txt`. The project uses Poetry (`pyproject.toml`), and `pip install` will not correctly resolve Poetry-managed dependencies or install `gunicorn` on PATH.
 5. Change **Start Command** to:
    ```
    cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
    ```
+   > **Important:** Do NOT use bare `gunicorn`. When installed via Poetry, `gunicorn` is in the Poetry virtualenv and not on `PATH`. Use `python -m gunicorn` instead.
 6. Click "Save" and Render will auto-redeploy
 
 ## Verification
@@ -94,13 +102,14 @@ Render's behavior:
 1. When you manually create a service, it auto-detects the runtime (Node, Python, etc.)
 2. It then runs a **default build command** for that runtime
 3. For Python, the default is: `pip install -r requirements.txt`
-4. This **ignores your render.yaml configuration**
-5. The default start command uses bare `gunicorn` (not `python -m gunicorn`), which fails when gunicorn is not on PATH
+4. This **ignores your render.yaml configuration** and the Poetry-managed `pyproject.toml`
+5. The default start command uses bare `gunicorn` (not `python -m gunicorn`), which fails because Poetry installs packages in a virtualenv not on `PATH`
+6. Even though `gunicorn` is listed in `backend-ease-brain/requirements.txt`, `pip install` may not install it correctly in Render's environment when Poetry is the intended package manager
 
 The code-level fix:
-- Added `backend-ease-brain/pyproject.toml` for Poetry dependency management
-- Updated `render.yaml` with proper `rootDir` and Poetry-based build/start commands
-- Updated `.render-bashrc` to prefer Poetry install when `pyproject.toml` exists
+- `backend-ease-brain/pyproject.toml` is the source of truth for Python dependencies (Poetry)
+- `render.yaml` uses `poetry install` for building and `python -m gunicorn` for starting
+- `.render-bashrc` provides a fallback to install via Poetry when `pyproject.toml` exists
 
 The solution is to either:
 - **Re-import from `render.yaml`** (recommended - uses Poetry install and `python -m gunicorn`)

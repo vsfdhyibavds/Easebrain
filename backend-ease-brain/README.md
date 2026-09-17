@@ -45,9 +45,7 @@ backend-ease-brain/
 
 ```bash
 cd backend-ease-brain
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+poetry install
 
 # Create .env file
 cat > .env << EOF
@@ -398,8 +396,8 @@ flask db downgrade
 Configuration in `render.yaml`:
 
 ```yaml
-buildCommand: pip install -r backend-ease-brain/requirements.txt
-startCommand: cd backend-ease-brain && gunicorn app:app
+buildCommand: cd backend-ease-brain && poetry install
+startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
 ```
 
 Environment variables set in Render dashboard:

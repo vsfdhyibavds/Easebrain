@@ -58,7 +58,7 @@ python seed_roles.py || echo "⚠️ Role seeding failed, but continuing..."
 
 # Start Gunicorn
 echo "🚀 Starting Gunicorn..."
-exec gunicorn -c gunicorn_config.py app:app
+exec python -m gunicorn -c gunicorn_config.py app:app
 EOF
 
 chmod +x backend-ease-brain/startup.sh
@@ -108,7 +108,7 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: cd backend-ease-brain && poetry install
     preDeployCommand: flask db upgrade && python seed_roles.py
     startCommand: ./startup.sh
     envVars:
@@ -181,7 +181,7 @@ Go to: easebrain-backend → Environment → Add these as **Secret** variables:
 
 ### Verify Configuration
 - [ ] Check that `DATABASE_URL` is auto-set (should appear in Environment tab)
-- [ ] Verify build command: `pip install -r requirements.txt`
+- [ ] Verify build command: `cd backend-ease-brain && poetry install`
 - [ ] Verify start command: `./startup.sh`
 - [ ] Verify preDeploy command: `flask db upgrade && python seed_roles.py`
 

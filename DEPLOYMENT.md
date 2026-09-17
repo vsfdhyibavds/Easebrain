@@ -134,7 +134,7 @@ flask db upgrade
 
 **Error: `npm not found` or `pip not found`**
 - Check you're on the correct runtime (Node for frontend, Python for backend)
-- Verify package.json or requirements.txt exists
+- Verify `pyproject.toml` or `requirements.txt` exists
 
 **Error: `VITE_BASE_URL not set`**
 - The frontend build command sets this automatically

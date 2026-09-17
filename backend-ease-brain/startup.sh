@@ -82,4 +82,4 @@ bash ./migrate_and_seed.sh
 
 # Start Gunicorn
 echo "🚀 Starting Gunicorn..."
-exec gunicorn -c gunicorn_config.py app:app
+exec python -m gunicorn -c gunicorn_config.py app:app

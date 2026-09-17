@@ -52,9 +52,7 @@ App: `http://localhost:5173`
 
 ```bash
 cd backend-ease-brain
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+poetry install
 echo "DATABASE_URL=postgresql://user:pass@localhost/easebrain" > .env
 flask db upgrade
 flask run --debug --port 5500
@@ -610,7 +608,7 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
-pip install -r requirements.txt
+poetry install
 
 # Create .env file (copy from .env.render.example and modify)
 cp ../.env.render.example .env

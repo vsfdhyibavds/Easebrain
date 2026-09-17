@@ -147,7 +147,7 @@ python -c "import secrets; print('JWT_SECRET_KEY:', secrets.token_hex(32))"
    - python seed_roles.py (seed data)
    ↓
 4. Start phase:
-   - gunicorn app:app (Flask server)
+    - python -m gunicorn app:app (Flask server)
    ↓
 5. Health check: GET /api/health
    - If healthy → goes live

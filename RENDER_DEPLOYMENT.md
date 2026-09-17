@@ -47,20 +47,15 @@ services:
     name: easebrain-backend
     env: python
     rootDir: backend-ease-brain
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -c gunicorn_config.py app:app
-  - type: web
-    name: easebrain-frontend
-    env: static
-    rootDir: frontend-ease-brain
-    buildCommand: npm install --production=false && npm run build
-    staticPublishPath: dist
+    buildCommand: cd backend-ease-brain && poetry install
+    startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
 ```
 
 **Key Features:**
 - Separate backend and frontend services with explicit runtimes
+- Uses Poetry (`pyproject.toml`) for Python dependency management
 - Uses per-service `rootDir` to avoid runtime auto-detection issues
-- Uses Gunicorn for production WSGI
+- Uses `python -m gunicorn` for production WSGI (not bare `gunicorn`)
 - Frontend served as a static site
 
 ### 4. Set Required Environment Variables
@@ -102,7 +97,7 @@ Use the `.env.render.example` file as a template for all available variables.
 
 **Backend Build Command:**
 ```bash
-pip install -r requirements.txt
+cd backend-ease-brain && poetry install
 ```
 
 **Frontend Build Command:**
@@ -112,13 +107,15 @@ npm install --production=false && npm run build
 
 **Start Command:**
 ```bash
-gunicorn -c gunicorn_config.py app:app
+cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
 ```
 
 Uses `gunicorn_config.py` for production optimization:
 - Worker pool sizing based on CPU count
 - Memory leak prevention
 - Proper timeouts
+
+Poetry is the package manager for the backend. Dependencies are declared in `backend-ease-brain/pyproject.toml` (and the root `pyproject.toml`). Do not use `pip install -r requirements.txt` as it will not correctly resolve Poetry-managed dependencies.
 
 ### 6. Custom Domain (Optional)
 
@@ -187,9 +184,10 @@ Solution: Check Gunicorn workers
 **Problem:** `Cannot find module` errors
 
 ```
-Solution: Ensure requirements.txt is updated
-- Run: pip freeze > requirements.txt locally
-- Commit change and re-deploy
+Solution: Ensure Poetry dependencies are installed
+- Run: cd backend-ease-brain && poetry install locally
+- Commit any poetry.lock changes and re-deploy
+- Do NOT use pip install -r requirements.txt; use poetry install
 ```
 
 **Problem:** Email not sending
