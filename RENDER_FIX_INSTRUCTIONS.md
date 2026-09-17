@@ -74,15 +74,15 @@ If you don't want to delete and re-create, you can manually fix the environment:
    backend-ease-brain
    ```
 4. Change **Build Command** to:
-   ```
-   cd backend-ease-brain && poetry install
-   ```
-   > **Important:** Do NOT use `pip install -r requirements.txt`. The project uses Poetry (`pyproject.toml`), and `pip install` will not correctly resolve Poetry-managed dependencies or install `gunicorn` on PATH.
+    ```
+    poetry install
+    ```
+    > **Important:** Do NOT use `pip install -r requirements.txt`. The project uses Poetry (`pyproject.toml`), and `pip install` will not correctly resolve Poetry-managed dependencies or install `gunicorn` on PATH.
 5. Change **Start Command** to:
-   ```
-   cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
-   ```
-   > **Important:** Do NOT use bare `gunicorn`. When installed via Poetry, `gunicorn` is in the Poetry virtualenv and not on `PATH`. Use `python -m gunicorn` instead.
+    ```
+    python -m gunicorn -c gunicorn_config.py app:app
+    ```
+    > **Important:** Do NOT use bare `gunicorn`. When installed via Poetry, `gunicorn` is in the Poetry virtualenv and not on `PATH`. Use `python -m gunicorn` instead.
 6. Click "Save" and Render will auto-redeploy
 
 ## Verification

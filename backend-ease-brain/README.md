@@ -396,8 +396,9 @@ flask db downgrade
 Configuration in `render.yaml`:
 
 ```yaml
-buildCommand: cd backend-ease-brain && poetry install
-startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
+rootDir: backend-ease-brain
+buildCommand: poetry install
+startCommand: python -m gunicorn -c gunicorn_config.py app:app
 ```
 
 Environment variables set in Render dashboard:

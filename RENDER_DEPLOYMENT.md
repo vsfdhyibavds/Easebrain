@@ -47,8 +47,8 @@ services:
     name: easebrain-backend
     env: python
     rootDir: backend-ease-brain
-    buildCommand: cd backend-ease-brain && poetry install
-    startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
+    buildCommand: poetry install
+    startCommand: python -m gunicorn -c gunicorn_config.py app:app
 ```
 
 **Key Features:**
@@ -97,7 +97,7 @@ Use the `.env.render.example` file as a template for all available variables.
 
 **Backend Build Command:**
 ```bash
-cd backend-ease-brain && poetry install
+poetry install
 ```
 
 **Frontend Build Command:**
@@ -107,7 +107,7 @@ npm install --production=false && npm run build
 
 **Start Command:**
 ```bash
-cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
+python -m gunicorn -c gunicorn_config.py app:app
 ```
 
 Uses `gunicorn_config.py` for production optimization:

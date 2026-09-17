@@ -108,9 +108,9 @@ services:
     env: python
     region: oregon
     plan: free
-    buildCommand: cd backend-ease-brain && poetry install
+    buildCommand: poetry install
     preDeployCommand: flask db upgrade && python seed_roles.py
-    startCommand: ./startup.sh
+    startCommand: python -m gunicorn -c gunicorn_config.py app:app
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
@@ -181,8 +181,8 @@ Go to: easebrain-backend → Environment → Add these as **Secret** variables:
 
 ### Verify Configuration
 - [ ] Check that `DATABASE_URL` is auto-set (should appear in Environment tab)
-- [ ] Verify build command: `cd backend-ease-brain && poetry install`
-- [ ] Verify start command: `./startup.sh`
+- [ ] Verify build command: `poetry install`
+- [ ] Verify start command: `python -m gunicorn -c gunicorn_config.py app:app`
 - [ ] Verify preDeploy command: `flask db upgrade && python seed_roles.py`
 
 ## Post-Deployment

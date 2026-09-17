@@ -8,9 +8,9 @@ services:
     region: oregon
     plan: free
 
-    buildCommand: cd backend-ease-brain && poetry install
+    buildCommand: poetry install
 
-    startCommand: cd backend-ease-brain && python -m gunicorn -c gunicorn_config.py app:app
+    startCommand: python -m gunicorn -c gunicorn_config.py app:app
 
     healthCheckPath: /api/health
     healthCheckTimeout: 30
